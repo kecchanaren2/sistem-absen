@@ -6,10 +6,10 @@ import { v4 as uuidv4 } from 'uuid';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, nama_peserta, hari_absen, visitor_id, local_token, latitude, longitude } = body;
+    const { email, nama_peserta, nim_nip, hari_absen, visitor_id, local_token, latitude, longitude } = body;
 
     // 1. Basic Validation
-    if (!email || !nama_peserta || !hari_absen || !visitor_id || !latitude || !longitude) {
+    if (!email || !nama_peserta || !nim_nip || !hari_absen || !visitor_id || !latitude || !longitude) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -77,6 +77,7 @@ export async function POST(req: Request) {
       .insert({
         email,
         nama_peserta,
+        nim_nip,
         hari_absen,
         visitor_id,
         local_token: newToken,

@@ -1,6 +1,7 @@
 export const EVENT_LATITUDE = -8.7980556;
 export const EVENT_LONGITUDE = 115.1723917;
 export const MAX_DISTANCE_METERS = 50;
+export const BYPASS_GEOFENCING = process.env.NEXT_PUBLIC_BYPASS_GEOFENCING === 'true';
 
 /**
  * Calculates the great-circle distance between two points on the Earth's surface
@@ -13,6 +14,11 @@ export const MAX_DISTANCE_METERS = 50;
  * @returns Distance in meters
  */
 export function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  // Bypass geofencing in development mode
+  if (BYPASS_GEOFENCING) {
+    return 0;
+  }
+
   const R = 6371e3; // Earth's radius in meters
   const toRadians = (deg: number) => (deg * Math.PI) / 180;
 
