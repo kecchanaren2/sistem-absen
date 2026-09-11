@@ -13,10 +13,9 @@ const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 10; // Max 10 requests per minute
 
 function getRateLimitKey(req: Request): string {
-  // Try to get client IP from headers
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-             req.headers.get('x-real-ip') ||
-             'unknown';
+    req.headers.get('x-real-ip') ||
+    'unknown';
   return ip;
 }
 
@@ -25,13 +24,12 @@ function checkRateLimit(key: string): boolean {
   const record = requestCounts.get(key);
 
   if (!record || now > record.resetTime) {
-    // New window
     requestCounts.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
     return true;
   }
 
   if (record.count >= RATE_LIMIT_MAX) {
-    return false; // Rate limited
+    return false;
   }
 
   record.count++;
@@ -58,10 +56,10 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { email, nama_peserta, role, nim_nip, hari_absen: Sesi_input, visitor_id, local_token, latitude, longitude } = body;
+    const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude } = body;
 
     // 1. Basic Validation
-    if (!email || !nama_peserta || !nim_nip || !Sesi_input || !visitor_id || !latitude || !longitude) {
+    if (!email || !nama_peserta || !nim_nip || !Sesi || !visitor_id || !latitude || !longitude) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -83,84 +81,86 @@ export async function POST(req: Request) {
       }
     }
 
-    const sessionId = Number(Sesi_input) as 1 | 2;
-
-    // Validate hari_absen / session
+    // Validate Sesi value
+    const sessionId = Number(Sesi) as 1 | 2;
     if (![1, 2].includes(sessionId)) {
       return NextResponse.json({ error: 'Sesi absensi tidak valid.' }, { status: 400 });
     }
+
+    // Nama sesi untuk tampilan
+    const sesiName = sessionId === 1 ? 'Pagi' : 'Siang';
 
     // Check Schedule Validation
     const scheduleStatus = getSessionStatus(sessionId);
     if (!scheduleStatus.isOpen) {
       const sessionConfig = SESSION_SCHEDULES[sessionId];
-      return NextResponse.json({ 
-        error: `Absensi Sesi ${sessionConfig.name} sedang ditutup (${scheduleStatus.message}).` 
+      return NextResponse.json({
+        error: `Absensi Sesi ${sessionConfig.name} sedang ditutup (${scheduleStatus.message}).`
       }, { status: 400 });
     }
 
     // 2. Geofencing Validation
     const distance = getDistanceInMeters(latitude, longitude, EVENT_LATITUDE, EVENT_LONGITUDE);
     if (distance > MAX_DISTANCE_METERS) {
-      return NextResponse.json({ 
-        error: `Lokasi Anda terlalu jauh dari lokasi acara (${Math.round(distance)} meter). Jarak maksimal adalah ${MAX_DISTANCE_METERS} meter.` 
+      return NextResponse.json({
+        error: `Lokasi Anda terlalu jauh dari lokasi acara (${Math.round(distance)} meter). Jarak maksimal adalah ${MAX_DISTANCE_METERS} meter.`
       }, { status: 400 });
     }
 
     // 3. Anti-Cheat Validations
-    // a. Check if Email + Hari already exists (Handled by DB Unique Constraint, but let's check manually for better error message)
+    // a. Cek apakah email sudah absen di sesi ini
     const { data: existingEntry } = await supabaseAdmin
       .from('attendance')
       .select('id')
       .eq('email', email)
-      .eq('Sesi', sessionId)
+      .eq('Sesi', sesiName)
       .maybeSingle();
 
     if (existingEntry) {
-      return NextResponse.json({ error: `Anda sudah melakukan absensi untuk Sesi ${SESSION_SCHEDULES[sessionId].name}.` }, { status: 400 });
+      return NextResponse.json({ error: `Anda sudah melakukan absensi untuk Sesi ${sesiName}.` }, { status: 400 });
     }
 
-    // b. Check if visitor_id is already used by a different email today
+    // b. Cek apakah visitor_id sudah dipakai email lain di sesi ini
     const { data: fingerprintEntry } = await supabaseAdmin
       .from('attendance')
       .select('email')
       .eq('visitor_id', visitor_id)
-      .eq('Sesi', sessionId)
+      .eq('Sesi', sesiName)
       .neq('email', email)
       .limit(1)
       .maybeSingle();
 
     if (fingerprintEntry) {
-      return NextResponse.json({ error: `Perangkat ini sudah digunakan untuk absen Sesi ${SESSION_SCHEDULES[sessionId].name} dengan email lain.` }, { status: 400 });
+      return NextResponse.json({ error: `Perangkat ini sudah digunakan untuk absen Sesi ${sesiName} dengan email lain.` }, { status: 400 });
     }
 
-    // c. Check if local_token is used by a different email today
+    // c. Cek apakah local_token sudah dipakai email lain di sesi ini
     if (local_token) {
       const { data: tokenEntry } = await supabaseAdmin
         .from('attendance')
         .select('email')
         .eq('local_token', local_token)
-        .eq('Sesi', sessionId)
+        .eq('Sesi', sesiName)
         .neq('email', email)
         .limit(1)
         .maybeSingle();
 
       if (tokenEntry) {
-        return NextResponse.json({ error: `Browser ini sudah digunakan untuk absen Sesi ${SESSION_SCHEDULES[sessionId].name} dengan email lain.` }, { status: 400 });
+        return NextResponse.json({ error: `Browser ini sudah digunakan untuk absen Sesi ${sesiName} dengan email lain.` }, { status: 400 });
       }
     }
 
     // 4. Generate new token if not provided
     const newToken = local_token || uuidv4();
 
-    // 5. Insert into Database
+    // 5. Insert ke Database — kolom Sesi menyimpan "Pagi" atau "Siang"
     const { error: insertError } = await supabaseAdmin
       .from('attendance')
       .insert({
         email,
         nama_peserta,
         nim_nip,
-        hari_absen: sessionId,
+        Sesi: sesiName,
         visitor_id,
         local_token: newToken,
         latitude,
@@ -169,27 +169,27 @@ export async function POST(req: Request) {
 
     if (insertError) {
       console.error('Insert error:', insertError);
-      return NextResponse.json({ error: 'Gagal menyimpan data absensi.' }, { status: 500 });
+      return NextResponse.json({ error: `Gagal menyimpan data absensi: ${insertError.message}` }, { status: 500 });
     }
 
-    // 6. Check Certificate Eligibility (If Session 2 / Siang, check if they attended Session 1 / Pagi)
+    // 6. Cek Kelayakan Sertifikat (jika Sesi Siang, cek apakah sudah absen Pagi)
     let eligibleForCertificate = false;
     if (sessionId === 2) {
-      const { data: day1Data } = await supabaseAdmin
+      const { data: pagiData } = await supabaseAdmin
         .from('attendance')
         .select('id')
         .eq('email', email)
-        .eq('Sesi', 1)
+        .eq('Sesi', 'Pagi')
         .maybeSingle();
 
-      if (day1Data) {
+      if (pagiData) {
         eligibleForCertificate = true;
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `Absensi Sesi ${SESSION_SCHEDULES[sessionId].name} berhasil disimpan!`,
+      message: `Absensi Sesi ${sesiName} berhasil disimpan!`,
       local_token: newToken,
       eligibleForCertificate
     });

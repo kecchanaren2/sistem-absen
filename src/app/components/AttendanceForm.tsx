@@ -145,7 +145,7 @@ export default function AttendanceForm() {
           nama_peserta: namaPeserta,
           role,
           nim_nip: cleanNimNip,
-          hari_absen: hariAbsen,
+          Sesi: hariAbsen,
           visitor_id: visitorId,
           local_token: localToken,
           latitude: position.coords.latitude,
