@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getDistanceInMeters, EVENT_LATITUDE, EVENT_LONGITUDE, MAX_DISTANCE_METERS } from '@/lib/haversine';
+import { getSessionStatus, SESSION_SCHEDULES } from '@/lib/schedule';
 import { v4 as uuidv4 } from 'uuid';
 
 // ============================================
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { email, nama_peserta, nim_nip, hari_absen, visitor_id, local_token, latitude, longitude } = body;
+    const { email, nama_peserta, role, nim_nip, hari_absen, visitor_id, local_token, latitude, longitude } = body;
 
     // 1. Basic Validation
     if (!email || !nama_peserta || !nim_nip || !hari_absen || !visitor_id || !latitude || !longitude) {
@@ -69,9 +70,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Format email tidak valid.' }, { status: 400 });
     }
 
-    // Validate hari_absen
-    if (![1, 2].includes(Number(hari_absen))) {
-      return NextResponse.json({ error: 'Invalid hari_absen value' }, { status: 400 });
+    // Validate NIM / NIP format
+    const cleanNimNip = String(nim_nip).trim();
+    if (role === 'dosen') {
+      if (!/^\d{12}$/.test(cleanNimNip)) {
+        return NextResponse.json({ error: 'NIP harus berupa 12 digit angka.' }, { status: 400 });
+      }
+    } else {
+      // Default Mahasiswa
+      if (!/^\d{10}$/.test(cleanNimNip)) {
+        return NextResponse.json({ error: 'NIM harus berupa 10 digit angka.' }, { status: 400 });
+      }
+    }
+
+    const sessionId = Number(hari_absen) as 1 | 2;
+
+    // Validate hari_absen / session
+    if (![1, 2].includes(sessionId)) {
+      return NextResponse.json({ error: 'Sesi absensi tidak valid.' }, { status: 400 });
+    }
+
+    // Check Schedule Validation
+    const scheduleStatus = getSessionStatus(sessionId);
+    if (!scheduleStatus.isOpen) {
+      const sessionConfig = SESSION_SCHEDULES[sessionId];
+      return NextResponse.json({ 
+        error: `Absensi Sesi ${sessionConfig.name} sedang ditutup (${scheduleStatus.message}).` 
+      }, { status: 400 });
     }
 
     // 2. Geofencing Validation
@@ -88,11 +113,11 @@ export async function POST(req: Request) {
       .from('attendance')
       .select('id')
       .eq('email', email)
-      .eq('hari_absen', hari_absen)
+      .eq('hari_absen', sessionId)
       .single();
 
     if (existingEntry) {
-      return NextResponse.json({ error: 'Anda sudah melakukan absensi pada hari ini.' }, { status: 400 });
+      return NextResponse.json({ error: `Anda sudah melakukan absensi untuk Sesi ${SESSION_SCHEDULES[sessionId].name}.` }, { status: 400 });
     }
 
     // b. Check if visitor_id is already used by a different email today
@@ -100,13 +125,13 @@ export async function POST(req: Request) {
       .from('attendance')
       .select('email')
       .eq('visitor_id', visitor_id)
-      .eq('hari_absen', hari_absen)
+      .eq('hari_absen', sessionId)
       .neq('email', email)
       .limit(1)
       .single();
 
     if (fingerprintEntry) {
-      return NextResponse.json({ error: 'Perangkat ini sudah digunakan untuk absen dengan email lain hari ini.' }, { status: 400 });
+      return NextResponse.json({ error: `Perangkat ini sudah digunakan untuk absen Sesi ${SESSION_SCHEDULES[sessionId].name} dengan email lain.` }, { status: 400 });
     }
 
     // c. Check if local_token is used by a different email today
@@ -115,13 +140,13 @@ export async function POST(req: Request) {
         .from('attendance')
         .select('email')
         .eq('local_token', local_token)
-        .eq('hari_absen', hari_absen)
+        .eq('hari_absen', sessionId)
         .neq('email', email)
         .limit(1)
         .single();
 
       if (tokenEntry) {
-        return NextResponse.json({ error: 'Browser ini sudah digunakan untuk absen dengan email lain hari ini (Token Terdeteksi).' }, { status: 400 });
+        return NextResponse.json({ error: `Browser ini sudah digunakan untuk absen Sesi ${SESSION_SCHEDULES[sessionId].name} dengan email lain.` }, { status: 400 });
       }
     }
 
@@ -135,7 +160,7 @@ export async function POST(req: Request) {
         email,
         nama_peserta,
         nim_nip,
-        hari_absen,
+        hari_absen: sessionId,
         visitor_id,
         local_token: newToken,
         latitude,
@@ -147,9 +172,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Gagal menyimpan data absensi.' }, { status: 500 });
     }
 
-    // 6. Check Certificate Eligibility (If Day 2, check if they attended Day 1)
+    // 6. Check Certificate Eligibility (If Session 2 / Siang, check if they attended Session 1 / Pagi)
     let eligibleForCertificate = false;
-    if (Number(hari_absen) === 2) {
+    if (sessionId === 2) {
       const { data: day1Data } = await supabaseAdmin
         .from('attendance')
         .select('id')
@@ -164,7 +189,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Absensi berhasil disimpan!',
+      message: `Absensi Sesi ${SESSION_SCHEDULES[sessionId].name} berhasil disimpan!`,
       local_token: newToken,
       eligibleForCertificate
     });
