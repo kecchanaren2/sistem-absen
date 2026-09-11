@@ -109,12 +109,12 @@ export async function POST(req: Request) {
 
     // 3. Anti-Cheat Validations
     // a. Check if Email + Hari already exists (Handled by DB Unique Constraint, but let's check manually for better error message)
-    const { data: existingEntry, error: checkError } = await supabaseAdmin
+    const { data: existingEntry } = await supabaseAdmin
       .from('attendance')
       .select('id')
       .eq('email', email)
       .eq('Sesi', sessionId)
-      .single();
+      .maybeSingle();
 
     if (existingEntry) {
       return NextResponse.json({ error: `Anda sudah melakukan absensi untuk Sesi ${SESSION_SCHEDULES[sessionId].name}.` }, { status: 400 });
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
       .eq('Sesi', sessionId)
       .neq('email', email)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (fingerprintEntry) {
       return NextResponse.json({ error: `Perangkat ini sudah digunakan untuk absen Sesi ${SESSION_SCHEDULES[sessionId].name} dengan email lain.` }, { status: 400 });
@@ -143,7 +143,7 @@ export async function POST(req: Request) {
         .eq('Sesi', sessionId)
         .neq('email', email)
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (tokenEntry) {
         return NextResponse.json({ error: `Browser ini sudah digunakan untuk absen Sesi ${SESSION_SCHEDULES[sessionId].name} dengan email lain.` }, { status: 400 });
@@ -180,7 +180,7 @@ export async function POST(req: Request) {
         .select('id')
         .eq('email', email)
         .eq('Sesi', 1)
-        .single();
+        .maybeSingle();
 
       if (day1Data) {
         eligibleForCertificate = true;
