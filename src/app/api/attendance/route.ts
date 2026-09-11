@@ -58,10 +58,10 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { email, nama_peserta, role, nim_nip, hari_absen, visitor_id, local_token, latitude, longitude } = body;
+    const { email, nama_peserta, role, nim_nip, hari_absen: Sesi_input, visitor_id, local_token, latitude, longitude } = body;
 
     // 1. Basic Validation
-    if (!email || !nama_peserta || !nim_nip || !hari_absen || !visitor_id || !latitude || !longitude) {
+    if (!email || !nama_peserta || !nim_nip || !Sesi_input || !visitor_id || !latitude || !longitude) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const sessionId = Number(hari_absen) as 1 | 2;
+    const sessionId = Number(Sesi_input) as 1 | 2;
 
     // Validate hari_absen / session
     if (![1, 2].includes(sessionId)) {
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
       .from('attendance')
       .select('id')
       .eq('email', email)
-      .eq('hari_absen', sessionId)
+      .eq('Sesi', sessionId)
       .single();
 
     if (existingEntry) {
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
       .from('attendance')
       .select('email')
       .eq('visitor_id', visitor_id)
-      .eq('hari_absen', sessionId)
+      .eq('Sesi', sessionId)
       .neq('email', email)
       .limit(1)
       .single();
@@ -140,7 +140,7 @@ export async function POST(req: Request) {
         .from('attendance')
         .select('email')
         .eq('local_token', local_token)
-        .eq('hari_absen', sessionId)
+        .eq('Sesi', sessionId)
         .neq('email', email)
         .limit(1)
         .single();
@@ -179,7 +179,7 @@ export async function POST(req: Request) {
         .from('attendance')
         .select('id')
         .eq('email', email)
-        .eq('hari_absen', 1)
+        .eq('Sesi', 1)
         .single();
 
       if (day1Data) {
