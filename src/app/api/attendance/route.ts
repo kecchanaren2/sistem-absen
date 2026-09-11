@@ -3,8 +3,59 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getDistanceInMeters, EVENT_LATITUDE, EVENT_LONGITUDE, MAX_DISTANCE_METERS } from '@/lib/haversine';
 import { v4 as uuidv4 } from 'uuid';
 
+// ============================================
+// RATE LIMITING (Simple In-Memory Store)
+// ============================================
+// Tracks requests by IP/identifier
+const requestCounts = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 10; // Max 10 requests per minute
+
+function getRateLimitKey(req: Request): string {
+  // Try to get client IP from headers
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+             req.headers.get('x-real-ip') ||
+             'unknown';
+  return ip;
+}
+
+function checkRateLimit(key: string): boolean {
+  const now = Date.now();
+  const record = requestCounts.get(key);
+
+  if (!record || now > record.resetTime) {
+    // New window
+    requestCounts.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+
+  if (record.count >= RATE_LIMIT_MAX) {
+    return false; // Rate limited
+  }
+
+  record.count++;
+  return true;
+}
+
+// ============================================
+// EMAIL VALIDATION
+// ============================================
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 export async function POST(req: Request) {
   try {
+    // Check rate limit
+    const clientKey = getRateLimitKey(req);
+    if (!checkRateLimit(clientKey)) {
+      return NextResponse.json(
+        { error: 'Terlalu banyak request. Silakan coba lagi dalam beberapa saat.' },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { email, nama_peserta, nim_nip, hari_absen, visitor_id, local_token, latitude, longitude } = body;
 
@@ -13,6 +64,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Validate email format
+    if (!isValidEmail(email)) {
+      return NextResponse.json({ error: 'Format email tidak valid.' }, { status: 400 });
+    }
+
+    // Validate hari_absen
     if (![1, 2].includes(Number(hari_absen))) {
       return NextResponse.json({ error: 'Invalid hari_absen value' }, { status: 400 });
     }
