@@ -70,14 +70,44 @@ export async function POST(req: Request) {
 
     // Validate NIM / NIP format
     const cleanNimNip = String(nim_nip).trim();
-    if (role === 'dosen') {
-      if (!/^\d{12}$/.test(cleanNimNip)) {
-        return NextResponse.json({ error: 'NIP harus berupa 12 digit angka.' }, { status: 400 });
+    const isDosenRole = role === 'panitia_dosen' || role === 'peserta_dosen' || role === 'peserta_tendik';
+    if (isDosenRole) {
+      if (!/^\d{18}$/.test(cleanNimNip)) {
+        return NextResponse.json({ error: 'NIP harus berupa 18 digit angka.' }, { status: 400 });
       }
     } else {
-      // Default Mahasiswa
+      // Mahasiswa / Panitia Mahasiswa / Peserta Mahasiswa
       if (!/^\d{10}$/.test(cleanNimNip)) {
         return NextResponse.json({ error: 'NIM harus berupa 10 digit angka.' }, { status: 400 });
+      }
+    }
+
+    // Whitelist validation untuk role Panitia
+    if (role === 'panitia_mahasiswa') {
+      const { data: whitelistEntry } = await supabaseAdmin
+        .from('Panitia Mahasiswa')
+        .select('nim')
+        .eq('nim', cleanNimNip)
+        .maybeSingle();
+
+      if (!whitelistEntry) {
+        return NextResponse.json({
+          error: 'NIM Anda tidak terdaftar sebagai Panitia Mahasiswa. Silakan pilih role yang sesuai.'
+        }, { status: 403 });
+      }
+    }
+
+    if (role === 'panitia_dosen') {
+      const { data: whitelistEntry } = await supabaseAdmin
+        .from('Panitia Dosen')
+        .select('nip')
+        .eq('nip', cleanNimNip)
+        .maybeSingle();
+
+      if (!whitelistEntry) {
+        return NextResponse.json({
+          error: 'NIP Anda tidak terdaftar sebagai Panitia Dosen. Silakan pilih role yang sesuai.'
+        }, { status: 403 });
       }
     }
 
@@ -159,6 +189,7 @@ export async function POST(req: Request) {
       .insert({
         email,
         nama_peserta,
+        role,
         nim_nip,
         Sesi: sesiName,
         visitor_id,
