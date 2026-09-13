@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import fpPromise from '@fingerprintjs/fingerprintjs';
-import { ChevronDown, MapPin, Fingerprint, Loader2, Download, CheckCircle, AlertCircle, Clock, Lock, UserCheck, ShieldCheck, Sparkles } from 'lucide-react';
+import { ChevronDown, MapPin, Fingerprint, Loader2, Download, CheckCircle, AlertCircle, Clock, Lock, UserCheck, ShieldCheck } from 'lucide-react';
 import { getSessionStatus, SESSION_SCHEDULES, SessionStatus } from '@/lib/schedule';
 
 export default function AttendanceForm() {
@@ -205,9 +205,28 @@ export default function AttendanceForm() {
         <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -left-8 -bottom-8 w-32 h-32 bg-indigo-400/20 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="flex items-center space-x-2 bg-white/15 backdrop-blur-md px-3.5 py-1 rounded-full text-xs font-semibold tracking-wide text-blue-50 mb-3 border border-white/20">
-          <Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-pulse" />
-          <span>Sistem Presensi </span>
+        {/* Logo Banner */}
+        <div className="flex items-center justify-center gap-2 bg-white/35 backdrop-blur-md px-4 py-2 rounded-full mb-4 border border-white/40 shadow-lg shadow-black/20">
+          {/* Logo UNUD */}
+          <img
+            src="/logo unud 1.svg"
+            alt="Logo Universitas Udayana"
+            className="h-9 w-auto object-contain"
+          />
+          <div className="w-px h-7 bg-zinc-300/80" />
+          {/* Logo Kampus Merdeka */}
+          <img
+            src="/Logo_Kampus_Merdeka_Kemendikbud 3.svg"
+            alt="Logo Kampus Merdeka"
+            className="h-8 w-auto object-contain"
+          />
+          <div className="w-px h-7 bg-zinc-300/80" />
+          {/* Logo Dies Natalis */}
+          <img
+            src="/logo-dies-hitam.svg"
+            alt="Logo Dies Natalis"
+            className="h-8 w-auto object-contain"
+          />
         </div>
 
         <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1">Portal Absensi</h2>
