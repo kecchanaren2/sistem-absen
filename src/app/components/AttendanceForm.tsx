@@ -406,17 +406,17 @@ export default function AttendanceForm() {
                     {isDosenRole ? 'NIP' : 'NIM'}
                   </label>
                   <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-                    {isDosenRole ? '18 Digit Angka' : '10 Digit Angka'}
+                    {isDosenRole ? '19 Digit Angka' : '10 Digit Angka'}
                   </span>
                 </div>
                 <input
                   type="text"
                   required
-                  maxLength={isDosenRole ? 18 : 10}
+                  maxLength={isDosenRole ? 19 : 10}
                   value={nimNip}
                   onChange={(e) => { setNimNip(e.target.value.replace(/\D/g, '')); }}
                   className="w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white transition-all shadow-sm touch-manipulation font-mono tracking-wider"
-                  placeholder={isDosenRole ? 'Misal: 198110072008121000 (18 digit)' : 'Misal: 1234567890 (10 digit)'}
+                  placeholder={isDosenRole ? 'Misal: 198110072008121000 (19 digit)' : 'Misal: 1234567890 (10 digit)'}
                   autoComplete="off"
                 />
               </div>
