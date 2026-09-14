@@ -229,7 +229,7 @@ export default function AttendanceForm() {
           />
         </div>
 
-        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1">Portal Absensi</h2>
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1">PORTAL ABSENSI</h2>
 
         {/* Live Clock Badge */}
         {currentTime && (
@@ -425,7 +425,7 @@ export default function AttendanceForm() {
                     {isDosenRole ? 'NIP' : 'NIM'}
                   </label>
                   <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-                    {isDosenRole ? '19 Digit Angka' : '10 Digit Angka'}
+                    {isDosenRole ? '' : ''}
                   </span>
                 </div>
                 <input
@@ -435,7 +435,7 @@ export default function AttendanceForm() {
                   value={nimNip}
                   onChange={(e) => { setNimNip(e.target.value.replace(/\D/g, '')); }}
                   className="w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white transition-all shadow-sm touch-manipulation font-mono tracking-wider"
-                  placeholder={isDosenRole ? 'Misal: 198110072008121000 (19 digit)' : 'Misal: 1234567890 (10 digit)'}
+                  placeholder={isDosenRole ? 'Misal: 198110072008121000' : 'Misal: 1234567890'}
                   autoComplete="off"
                 />
               </div>
