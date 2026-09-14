@@ -199,7 +199,7 @@ export default function AttendanceForm() {
   };
 
   return (
-    <div className="w-full max-w-md sm:max-w-lg mx-auto flex flex-col bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-800/80 transition-all">
+    <div className="w-full max-w-md sm:max-w-lg mx-auto flex flex-col bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-100 dark:from-blue-950 dark:via-slate-900 dark:to-indigo-950 rounded-3xl shadow-2xl overflow-hidden border border-blue-200/80 dark:border-blue-900/80 transition-all">
       {/* Header Banner */}
       <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 px-5 sm:px-8 py-7 sm:py-9 text-white text-center flex flex-col items-center justify-center overflow-hidden">
         <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
