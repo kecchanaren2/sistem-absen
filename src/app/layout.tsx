@@ -13,31 +13,52 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sistem Absensi Digital",
-  description: "Platform absensi digital dengan geofencing dan verifikasi perangkat",
+  title: "PORTAL ABSENSI - Dies Natalis 64 Universitas Udayana",
+  description: "Platform absensi digital resmi Dies Natalis 64 Universitas Udayana",
   viewport: "width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Sistem Absensi",
+    title: "Portal Absensi",
   },
   formatDetection: {
     telephone: false,
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth`}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth dark`}
     >
       <head>
-        <meta name="theme-color" content="#2563eb" />
+        <meta name="theme-color" content="#ea580c" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const savedTheme = localStorage.getItem('theme');
+                  if (savedTheme === 'light') {
+                    document.documentElement.classList.remove('dark');
+                  } else {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
       </head>
-      <body className="min-h-screen flex flex-col bg-zinc-50 dark:bg-black">
+      <body className="min-h-screen flex flex-col transition-colors duration-300">
         {children}
       </body>
     </html>
