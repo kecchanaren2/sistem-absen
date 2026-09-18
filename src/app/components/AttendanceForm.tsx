@@ -230,8 +230,16 @@ export default function AttendanceForm() {
     }
   };
 
-  const handleDownloadCertificate = () => {
-    window.open(`/api/certificate?nama_peserta=${encodeURIComponent(namaPeserta)}`, '_blank');
+  const handleDownloadCertificate = async () => {
+    if (namaPeserta) {
+      try {
+        const { generateAndDownloadCertificate } = await import('@/lib/certificate');
+        await generateAndDownloadCertificate(namaPeserta, role);
+      } catch (error) {
+        console.error("Gagal membuat sertifikat:", error);
+        alert("Gagal membuat sertifikat pada perangkat ini.");
+      }
+    }
   };
 
   const ROLES = [
@@ -267,20 +275,31 @@ export default function AttendanceForm() {
         <div className="absolute bg-white/10 blur-[40px] -right-8 -top-8 rounded-full size-32 pointer-events-none" />
         <div className="absolute bg-[#ffee7c]/20 blur-[40px] -left-8 -bottom-8 rounded-full size-32 pointer-events-none" />
 
-        {/* Top Header Actions (Theme Toggle Button on the top right) */}
+        {/* Top Header Actions */}
         {isMounted && (
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle Dark / Light Mode"
-            className="absolute top-4 right-4 z-20 !min-h-0 !min-w-0 p-[5px] rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
-          >
-            {isDark ? (
-              <Sun className="w-4 h-4 text-yellow-100 transition-transform duration-300 rotate-0 hover:rotate-45" />
-            ) : (
-              <Moon className="w-4 h-4 text-white transition-transform duration-300 rotate-0 hover:-rotate-12" />
-            )}
-          </button>
+          <>
+            {/* Certificate Portal Button on the top left */}
+            <a
+              href="/sertifikat"
+              className="absolute top-4 left-4 z-20 px-4 py-1.5 rounded-full bg-[#3e2a21]/90 hover:bg-[#3e2a21] border border-white/10 text-white/90 text-sm font-semibold transition-all duration-200 active:scale-95 shadow-sm"
+            >
+              Sertifikat
+            </a>
+            
+            {/* Theme Toggle Button on the top right */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label="Toggle Dark / Light Mode"
+              className="absolute top-4 right-4 z-20 !min-h-0 !min-w-0 p-[5px] rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
+            >
+              {isDark ? (
+                <Sun className="w-4 h-4 text-yellow-100 transition-transform duration-300 rotate-0 hover:rotate-45" />
+              ) : (
+                <Moon className="w-4 h-4 text-white transition-transform duration-300 rotate-0 hover:-rotate-12" />
+              )}
+            </button>
+          </>
         )}
 
         {/* Frosted Logo Banner Capsule */}

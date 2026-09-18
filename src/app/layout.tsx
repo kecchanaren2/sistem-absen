@@ -15,7 +15,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "PORTAL ABSENSI - Dies Natalis 64 Universitas Udayana",
   description: "Platform absensi digital resmi Dies Natalis 64 Universitas Udayana",
-  viewport: "width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -24,6 +23,13 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  maximumScale: 5,
 };
 
 export default function RootLayout({
