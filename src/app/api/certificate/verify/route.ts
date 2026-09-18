@@ -1,8 +1,53 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
+// ============================================
+// RATE LIMITING (Simple In-Memory Store)
+// ============================================
+// Prevents scripted enumeration of NIM/NIP values, which would otherwise
+// let anyone scrape names of every participant by guessing NIM numbers.
+// NOTE: this in-memory store resets per serverless instance on Vercel, so
+// it's a best-effort mitigation, not a hard guarantee — pair with Upstash
+// Redis / Vercel KV for a production-grade limit if abuse is a real concern.
+const requestCounts = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 5; // Max 5 verification attempts per minute per IP
+
+function getRateLimitKey(req: Request): string {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+    req.headers.get('x-real-ip') ||
+    'unknown';
+  return ip;
+}
+
+function checkRateLimit(key: string): boolean {
+  const now = Date.now();
+  const record = requestCounts.get(key);
+
+  if (!record || now > record.resetTime) {
+    requestCounts.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+
+  if (record.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+
+  record.count++;
+  return true;
+}
+
 export async function POST(req: Request) {
   try {
+    // Check rate limit first, before touching the database
+    const clientKey = getRateLimitKey(req);
+    if (!checkRateLimit(clientKey)) {
+      return NextResponse.json(
+        { error: 'Terlalu banyak percobaan verifikasi. Silakan coba lagi dalam beberapa saat.' },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { nim_nip } = body;
 

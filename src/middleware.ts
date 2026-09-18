@@ -9,22 +9,26 @@ export function middleware(request: NextRequest) {
     'http://localhost:3000',
     'http://localhost:3001',
     'http://127.0.0.1:3000',
-    // Add your production domain here
-    // 'https://yourdomain.com',
+    'https://sistem-absen-theta.vercel.app',
   ];
 
   const isAllowedOrigin = allowedOrigins.includes(origin || '');
 
   // Handle preflight requests
   if (request.method === 'OPTIONS') {
+    const preflightHeaders: Record<string, string> = {
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400',
+    };
+    // Only echo the origin back when it's actually whitelisted — previously
+    // this fell back to '*' for ANY origin, which defeated the whitelist.
+    if (isAllowedOrigin) {
+      preflightHeaders['Access-Control-Allow-Origin'] = origin as string;
+    }
     return new NextResponse(null, {
       status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': isAllowedOrigin ? origin || '*' : '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Max-Age': '86400',
-      },
+      headers: preflightHeaders,
     });
   }
 
