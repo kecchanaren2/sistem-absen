@@ -43,6 +43,7 @@ export default function AttendanceForm() {
   const roleDropdownRef = useRef<HTMLDivElement>(null);
 
   const [visitorId, setVisitorId] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Schedules state
   const [status1, setStatus1] = useState<SessionStatus>(() => getSessionStatus(1));
@@ -142,10 +143,8 @@ export default function AttendanceForm() {
 
   const selectedSessionStatus = hariAbsen === 1 ? status1 : status2;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setMessage(null);
 
     // Validation for NIM / NIP format
     const cleanNimNip = nimNip.trim();
@@ -153,26 +152,36 @@ export default function AttendanceForm() {
     if (isDosenRole) {
       if (!/^\d{18}$/.test(cleanNimNip)) {
         setMessage({ text: 'NIP harus berupa 18 digit angka.', type: 'error' });
-        setIsLoading(false);
         return;
       }
     } else {
       if (!/^\d{10}$/.test(cleanNimNip)) {
         setMessage({ text: 'NIM harus berupa 10 digit angka.', type: 'error' });
-        setIsLoading(false);
         return;
       }
     }
 
+    if (!selectedSessionStatus.isOpen) {
+      setMessage({ text: `Sesi ${SESSION_SCHEDULES[hariAbsen].name} sedang ditutup.`, type: 'error' });
+      return;
+    }
+
+    if (!visitorId) {
+      setMessage({ text: 'Identifikasi perangkat belum siap. Silakan refresh halaman.', type: 'error' });
+      return;
+    }
+
+    setShowConfirm(true);
+  };
+
+  const executeSubmit = async () => {
+    setShowConfirm(false);
+    setIsLoading(true);
+    setMessage(null);
+
+    const cleanNimNip = nimNip.trim();
+
     try {
-      if (!selectedSessionStatus.isOpen) {
-        throw new Error(`Sesi ${SESSION_SCHEDULES[hariAbsen].name} sedang ditutup.`);
-      }
-
-      if (!visitorId) {
-        throw new Error('Identifikasi perangkat belum siap. Silakan refresh halaman.');
-      }
-
       // 1. Get Geolocation
       let position: GeolocationPosition;
       setLocationStatus('pending');
@@ -682,6 +691,39 @@ export default function AttendanceForm() {
           </button>
         </form>
       </div>
+
+      {/* Custom Confirm Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
+                <AlertCircle className="h-8 w-8 text-amber-600 dark:text-amber-500" />
+              </div>
+              <h3 className="text-xl font-extrabold text-[#2c1e18] dark:text-[#f5ece7] mb-2">Konfirmasi Absensi</h3>
+              <p className="text-sm text-[#7e695d] dark:text-[#b09d92] font-medium mb-6 leading-relaxed">
+                PASTIKAN DATA ANDA SUDAH <strong className="text-amber-600 dark:text-amber-500">100% BENAR</strong>.<br/>Absen hanya bisa dilakukan 1x per sesi dan tidak dapat diubah kembali.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={executeSubmit}
+                  className="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] transition-all shadow-lg shadow-orange-500/25"
+                >
+                  Yakin, Kirim Sekarang
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(false)}
+                  className="w-full py-3.5 px-4 rounded-xl font-bold text-[#5a4439] dark:text-[#c9b8ae] bg-[#efe7e2] dark:bg-[#34241d] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23] active:scale-[0.98] transition-all"
+                >
+                  Batal, Cek Lagi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
