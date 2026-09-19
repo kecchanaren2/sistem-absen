@@ -11,7 +11,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 // Redis / Vercel KV for a production-grade limit if abuse is a real concern.
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 5; // Max 5 verification attempts per minute per IP
+const RATE_LIMIT_MAX = 100; // Dinaikkan ke 100 untuk antisipasi mahasiswa pakai WiFi Kampus yang IP-nya sama
 
 function getRateLimitKey(req: Request): string {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||

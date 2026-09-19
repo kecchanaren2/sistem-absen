@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Tracks requests by IP/identifier
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 10; // Max 10 requests per minute
+const RATE_LIMIT_MAX = 100; // Dinaikkan ke 100 agar aman untuk pengguna WiFi Kampus
 
 function getRateLimitKey(req: Request): string {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
@@ -46,9 +46,7 @@ function isValidEmail(email: string): boolean {
 
 export async function POST(req: Request) {
   try {
-    // Check rate limit
-    // [DIMATIKAN SEMENTARA UNTUK K6 STRESS TEST]
-    /*
+    // Check rate limit (Sudah diaktifkan kembali untuk Hari H)
     const clientKey = getRateLimitKey(req);
     if (!checkRateLimit(clientKey)) {
       return NextResponse.json(
@@ -56,7 +54,6 @@ export async function POST(req: Request) {
         { status: 429 }
       );
     }
-    */
 
     const body = await req.json();
     const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude } = body;
