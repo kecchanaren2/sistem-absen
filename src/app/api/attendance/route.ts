@@ -140,48 +140,12 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // 3. Anti-Cheat Validations
-    // a. Cek apakah email sudah absen di sesi ini
-    const { data: existingEntry } = await supabaseAdmin
-      .from('attendance')
-      .select('id')
-      .eq('email', email)
-      .eq('Sesi', sesiName)
-      .maybeSingle();
-
-    if (existingEntry) {
-      return NextResponse.json({ error: `Anda sudah melakukan absensi untuk Sesi ${sesiName}.` }, { status: 400 });
-    }
-
-    // b. Cek apakah visitor_id sudah dipakai email lain di sesi ini
-    const { data: fingerprintEntry } = await supabaseAdmin
-      .from('attendance')
-      .select('email')
-      .eq('visitor_id', visitor_id)
-      .eq('Sesi', sesiName)
-      .neq('email', email)
-      .limit(1)
-      .maybeSingle();
-
-    if (fingerprintEntry) {
-      return NextResponse.json({ error: `Perangkat ini sudah digunakan untuk absen Sesi ${sesiName} dengan email lain.` }, { status: 400 });
-    }
-
-    // c. Cek apakah local_token sudah dipakai email lain di sesi ini
-    if (local_token) {
-      const { data: tokenEntry } = await supabaseAdmin
-        .from('attendance')
-        .select('email')
-        .eq('local_token', local_token)
-        .eq('Sesi', sesiName)
-        .neq('email', email)
-        .limit(1)
-        .maybeSingle();
-
-      if (tokenEntry) {
-        return NextResponse.json({ error: `Browser ini sudah digunakan untuk absen Sesi ${sesiName} dengan email lain.` }, { status: 400 });
-      }
-    }
+    // 3. Anti-Cheat Validations (DIPANGKAS!)
+    // Semua pengecekan manual (email, visitor_id, local_token) telah DIHAPUS.
+    // Tugas pengecekan ini sekarang 100% diserahkan ke fitur UNIQUE INDEX di Supabase.
+    // Jika ada data duplikat, Supabase akan menolak INSERT dengan error kode 23505,
+    // yang sudah kita tangkap di bagian bawah kodingan ini.
+    // Hal ini memangkas jumlah request ke Supabase dari 4x menjadi 1x saja!
 
     // 4. Generate new token if not provided
     const newToken = local_token || uuidv4();
@@ -203,6 +167,14 @@ export async function POST(req: Request) {
 
     if (insertError) {
       console.error('Insert error:', insertError);
+      
+      // Penanganan khusus untuk error kode 23505 (Unique Violation / Race Condition)
+      if (insertError.code === '23505') {
+        return NextResponse.json({ 
+          error: `Sistem mendeteksi pengiriman ganda. Anda (atau perangkat Anda) sudah tercatat absen di Sesi ${sesiName}.` 
+        }, { status: 400 });
+      }
+
       return NextResponse.json({ error: `Gagal menyimpan data absensi: ${insertError.message}` }, { status: 500 });
     }
 
