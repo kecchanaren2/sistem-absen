@@ -47,6 +47,8 @@ function isValidEmail(email: string): boolean {
 export async function POST(req: Request) {
   try {
     // Check rate limit
+    // [DIMATIKAN SEMENTARA UNTUK K6 STRESS TEST]
+    /*
     const clientKey = getRateLimitKey(req);
     if (!checkRateLimit(clientKey)) {
       return NextResponse.json(
@@ -54,6 +56,7 @@ export async function POST(req: Request) {
         { status: 429 }
       );
     }
+    */
 
     const body = await req.json();
     const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude } = body;
