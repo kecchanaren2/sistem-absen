@@ -277,11 +277,11 @@ export default function AttendanceForm() {
 
         {/* Top Header Actions */}
         {isMounted && (
-          <>
+          <div className="absolute inset-x-3 top-3 z-20 flex items-start justify-between gap-2 sm:inset-x-4 sm:top-4">
             {/* Certificate Portal Button on the top left */}
             <a
               href="/sertifikat"
-              className="absolute top-4 left-4 z-20 px-4 py-1.5 rounded-full bg-[#3e2a21]/90 hover:bg-[#3e2a21] border border-white/10 text-white/90 text-sm font-semibold transition-all duration-200 active:scale-95 shadow-sm"
+              className="min-w-0 shrink px-3 py-1.5 rounded-full bg-[#3e2a21]/90 hover:bg-[#3e2a21] border border-white/10 text-white/90 text-xs sm:px-4 sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 active:scale-95 shadow-sm"
             >
               Sertifikat
             </a>
@@ -299,7 +299,7 @@ export default function AttendanceForm() {
                 <Moon className="w-4 h-4 text-white transition-transform duration-300 rotate-0 hover:-rotate-12" />
               )}
             </button>
-          </>
+          </div>
         )}
 
         {/* Frosted Logo Banner Capsule */}
