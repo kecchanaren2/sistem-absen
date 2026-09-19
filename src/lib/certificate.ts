@@ -6,7 +6,7 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
   return new Promise<void>((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous'; // Berguna jika template diload dari domain lain nanti
-    
+
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
@@ -26,19 +26,19 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#000000'; // Warna hitam, bisa disesuaikan nanti
-        
+
         // Kapitalisasi nama
         const capitalizedName = namaPeserta.replace(/\b\w/g, l => l.toUpperCase());
-        
+
         // Kalkulasi ukuran font dinamis (relatif terhadap lebar template)
         // Kita asumsikan ukuran ideal font adalah sekitar 6% dari lebar sertifikat
-        let fontSize = Math.floor(canvas.width * 0.05); 
+        let fontSize = Math.floor(canvas.width * 0.05);
         ctx.font = `bold ${fontSize}px "Times New Roman", Times, serif`;
-        
+
         let textWidth = ctx.measureText(capitalizedName).width;
         // Batas maksimal lebar teks adalah 70% dari lebar sertifikat
-        const maxTextWidth = canvas.width * 0.7; 
-        
+        const maxTextWidth = canvas.width * 0.7;
+
         // Mengecilkan ukuran font jika namanya terlalu panjang
         while (textWidth > maxTextWidth && fontSize > 10) {
           fontSize -= 2;
@@ -50,20 +50,20 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
         // Untuk vertikal (Y), ini perkiraan umum di tengah agak ke bawah (misal 55% dari atas).
         // Sesuaikan angka 0.55 ini (0.0 sampai 1.0) jika posisi namanya kurang pas di template Anda!
         const xPos = canvas.width / 2;
-        const yPos = canvas.height * 0.40; 
-        
+        const yPos = canvas.height * 0.31;
+
         ctx.fillText(capitalizedName, xPos, yPos);
 
         // 3. Ekspor ke PNG dan Trigger Download
         const dataUrl = canvas.toDataURL('image/png', 1.0);
-        
+
         const a = document.createElement('a');
         a.href = dataUrl;
         a.download = `Sertifikat - ${capitalizedName}.png`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        
+
         resolve();
       } catch (err) {
         reject(err);
