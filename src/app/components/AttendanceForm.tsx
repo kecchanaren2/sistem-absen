@@ -49,6 +49,8 @@ export default function AttendanceForm() {
   const [status1, setStatus1] = useState<SessionStatus>(() => getSessionStatus(1));
   const [status2, setStatus2] = useState<SessionStatus>(() => getSessionStatus(2));
 
+  const isPanitiaRole = role === 'panitia_mahasiswa' || role === 'panitia_dosen';
+
   // Initialize theme
   useEffect(() => {
     setIsMounted(true);
@@ -231,6 +233,9 @@ export default function AttendanceForm() {
       }
 
       setMessage({ text: data.message, type: 'success' });
+      if (data.nama_peserta) {
+        setNamaPeserta(data.nama_peserta);
+      }
       setEligibleForCertificate(data.eligibleForCertificate);
     } catch (error: any) {
       setMessage({ text: error.message, type: 'error' });
@@ -526,21 +531,24 @@ export default function AttendanceForm() {
             </div>
           </div>
 
-          {/* Nama Lengkap Input */}
-          <div className="flex flex-col space-y-1.5">
+          {/* Nama Lengkap Input untuk peserta */}
+          {!isPanitiaRole && <div className="flex flex-col space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
               NAMA LENGKAP
             </label>
             <input
               type="text"
               required
+              disabled={isPanitiaRole}
               value={namaPeserta}
-              onChange={(e) => setNamaPeserta(e.target.value)}
-              className="w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-[#decbc0] dark:border-[#4f382c] focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] transition-all shadow-xs touch-manipulation"
-              placeholder="Masukkan nama sesuai identitas"
+              onChange={(e) => {
+                setNamaPeserta(e.target.value.replace(/[^\p{L}\p{M} '\u2019-]/gu, ''));
+              }}
+              className={`w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-[#decbc0] dark:border-[#4f382c] focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] transition-all shadow-xs touch-manipulation ${isPanitiaRole ? 'cursor-not-allowed opacity-80' : ''}`}
+              placeholder={isPanitiaRole ? 'Nama akan muncul setelah NIM/NIP valid' : 'Masukkan nama sesuai identitas'}
               autoComplete="name"
             />
-          </div>
+          </div>}
 
           {/* Email Input */}
           <div className="flex flex-col space-y-1">

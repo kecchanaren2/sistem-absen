@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     // Query attendance records for this NIM/NIP
     const { data: attendanceRecords, error } = await supabaseAdmin
       .from('attendance')
-      .select('Sesi, nama_peserta, role')
+      .select('Sesi, nama_peserta, role, nim_nip')
       .eq('nim_nip', cleanNimNip);
 
     if (error) {
@@ -77,9 +77,43 @@ export async function POST(req: Request) {
     const hasSiang = attendanceRecords.some(record => record.Sesi === 'Siang');
 
     if (hasPagi && hasSiang) {
-      // Get the name and role from the first record
-      const namaPeserta = attendanceRecords[0].nama_peserta;
-      const role = attendanceRecords[0].role;
+      // Panitia names must always come from the whitelist, never from form input.
+      const firstRecord = attendanceRecords[0];
+      let namaPeserta = firstRecord.nama_peserta;
+
+      if (firstRecord.role === 'panitia_mahasiswa') {
+        const { data: panitia, error: panitiaError } = await supabaseAdmin
+          .from('Panitia Mahasiswa')
+          .select('Nama')
+          .eq('NIM', cleanNimNip)
+          .maybeSingle();
+
+        if (panitiaError) {
+          console.error('Panitia Mahasiswa lookup error:', panitiaError);
+          return NextResponse.json({ error: 'Gagal memvalidasi nama Panitia Mahasiswa.' }, { status: 500 });
+        }
+        if (!panitia) {
+          return NextResponse.json({ error: 'Data Panitia Mahasiswa tidak ditemukan.' }, { status: 404 });
+        }
+        namaPeserta = panitia.Nama;
+      } else if (firstRecord.role === 'panitia_dosen') {
+        const { data: panitia, error: panitiaError } = await supabaseAdmin
+          .from('Panitia Dosen')
+          .select('Nama')
+          .eq('NIP', cleanNimNip)
+          .maybeSingle();
+
+        if (panitiaError) {
+          console.error('Panitia Dosen lookup error:', panitiaError);
+          return NextResponse.json({ error: 'Gagal memvalidasi nama Panitia Dosen.' }, { status: 500 });
+        }
+        if (!panitia) {
+          return NextResponse.json({ error: 'Data Panitia Dosen tidak ditemukan.' }, { status: 404 });
+        }
+        namaPeserta = panitia.Nama;
+      }
+
+      const role = firstRecord.role;
       return NextResponse.json({
         eligible: true,
         nama_peserta: namaPeserta,

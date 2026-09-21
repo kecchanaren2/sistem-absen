@@ -44,6 +44,10 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
+function isValidParticipantName(name: string): boolean {
+  return /^[\p{L}\p{M}]+(?:[ '\u2019-][\p{L}\p{M}]+)*$/u.test(name.trim());
+}
+
 export async function POST(req: Request) {
   try {
     // Check rate limit (Sudah diaktifkan kembali untuk Hari H)
@@ -57,10 +61,40 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude } = body;
+    const isPanitiaRole = role === 'panitia_mahasiswa' || role === 'panitia_dosen';
 
     // 1. Basic Validation
-    if (!email || !nama_peserta || !nim_nip || !Sesi || !visitor_id || !latitude || !longitude) {
+    if (!email || (!isPanitiaRole && !nama_peserta) || !nim_nip || !Sesi || !visitor_id || !latitude || !longitude) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (!isPanitiaRole && !isValidParticipantName(String(nama_peserta))) {
+      return NextResponse.json({ error: 'Nama hanya boleh berisi huruf, spasi, tanda hubung, atau apostrof.' }, { status: 400 });
+    }
+
+    const allowedRoles = [
+      'panitia_mahasiswa',
+      'panitia_dosen',
+      'peserta_mahasiswa',
+      'peserta_tendik',
+      'peserta_dosen',
+    ];
+
+    if (!allowedRoles.includes(role)) {
+      return NextResponse.json({ error: 'Role tidak valid.' }, { status: 400 });
+    }
+
+    const latitudeNumber = Number(latitude);
+    const longitudeNumber = Number(longitude);
+    if (
+      !Number.isFinite(latitudeNumber) ||
+      !Number.isFinite(longitudeNumber) ||
+      latitudeNumber < -90 ||
+      latitudeNumber > 90 ||
+      longitudeNumber < -180 ||
+      longitudeNumber > 180
+    ) {
+      return NextResponse.json({ error: 'Koordinat lokasi tidak valid.' }, { status: 400 });
     }
 
     // Validate email format
@@ -83,32 +117,48 @@ export async function POST(req: Request) {
     }
 
     // Whitelist validation untuk role Panitia
+    let verifiedPanitiaName = nama_peserta;
+
     if (role === 'panitia_mahasiswa') {
-      const { data: whitelistEntry } = await supabaseAdmin
+      const { data: whitelistEntry, error: whitelistError } = await supabaseAdmin
         .from('Panitia Mahasiswa')
-        .select('nim')
-        .eq('nim', cleanNimNip)
+        .select('NIM, Nama')
+        .eq('NIM', cleanNimNip)
         .maybeSingle();
+
+      if (whitelistError) {
+        console.error('Panitia Mahasiswa lookup error:', whitelistError);
+        return NextResponse.json({ error: 'Gagal memvalidasi data Panitia Mahasiswa.' }, { status: 500 });
+      }
 
       if (!whitelistEntry) {
         return NextResponse.json({
           error: 'NIM Anda tidak terdaftar sebagai Panitia Mahasiswa. Silakan pilih role yang sesuai.'
         }, { status: 403 });
       }
+
+      verifiedPanitiaName = whitelistEntry.Nama;
     }
 
     if (role === 'panitia_dosen') {
-      const { data: whitelistEntry } = await supabaseAdmin
+      const { data: whitelistEntry, error: whitelistError } = await supabaseAdmin
         .from('Panitia Dosen')
-        .select('nip')
-        .eq('nip', cleanNimNip)
+        .select('NIP, Nama')
+        .eq('NIP', cleanNimNip)
         .maybeSingle();
+
+      if (whitelistError) {
+        console.error('Panitia Dosen lookup error:', whitelistError);
+        return NextResponse.json({ error: 'Gagal memvalidasi data Panitia Dosen.' }, { status: 500 });
+      }
 
       if (!whitelistEntry) {
         return NextResponse.json({
           error: 'NIP Anda tidak terdaftar sebagai Panitia Dosen. Silakan pilih role yang sesuai.'
         }, { status: 403 });
       }
+
+      verifiedPanitiaName = whitelistEntry.Nama;
     }
 
     // Validate Sesi value
@@ -130,7 +180,7 @@ export async function POST(req: Request) {
     }
 
     // 2. Geofencing Validation
-    const distance = getDistanceInMeters(latitude, longitude, EVENT_LATITUDE, EVENT_LONGITUDE);
+    const distance = getDistanceInMeters(latitudeNumber, longitudeNumber, EVENT_LATITUDE, EVENT_LONGITUDE);
     if (distance > MAX_DISTANCE_METERS) {
       return NextResponse.json({
         error: `Lokasi Anda terlalu jauh dari lokasi acara (${Math.round(distance)} meter). Jarak maksimal adalah ${MAX_DISTANCE_METERS} meter.`
@@ -152,14 +202,14 @@ export async function POST(req: Request) {
       .from('attendance')
       .insert({
         email,
-        nama_peserta,
+        nama_peserta: verifiedPanitiaName,
         role,
         nim_nip,
         Sesi: sesiName,
         visitor_id,
         local_token: newToken,
-        latitude,
-        longitude
+        latitude: latitudeNumber,
+        longitude: longitudeNumber
       });
 
     if (insertError) {
@@ -194,6 +244,7 @@ export async function POST(req: Request) {
       success: true,
       message: `Absensi Sesi ${sesiName} berhasil disimpan!`,
       local_token: newToken,
+      nama_peserta: verifiedPanitiaName,
       eligibleForCertificate
     });
 
