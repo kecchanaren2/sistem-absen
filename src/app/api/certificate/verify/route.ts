@@ -11,7 +11,6 @@ import { supabaseAdmin } from '@/lib/supabase';
 // Redis / Vercel KV for a production-grade limit if abuse is a real concern.
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 100; // Dinaikkan ke 100 untuk antisipasi mahasiswa pakai WiFi Kampus yang IP-nya sama
 
 function getRateLimitKey(req: Request): string {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
@@ -20,7 +19,7 @@ function getRateLimitKey(req: Request): string {
   return ip;
 }
 
-function checkRateLimit(key: string): boolean {
+function checkRateLimit(key: string, maxLimit: number): boolean {
   const now = Date.now();
   const record = requestCounts.get(key);
 
@@ -29,7 +28,7 @@ function checkRateLimit(key: string): boolean {
     return true;
   }
 
-  if (record.count >= RATE_LIMIT_MAX) {
+  if (record.count >= maxLimit) {
     return false;
   }
 
@@ -39,17 +38,29 @@ function checkRateLimit(key: string): boolean {
 
 export async function POST(req: Request) {
   try {
-    // Check rate limit first, before touching the database
-    const clientKey = getRateLimitKey(req);
-    if (!checkRateLimit(clientKey)) {
+    const body = await req.json();
+    const { nim_nip, visitor_id } = body;
+
+    // Check rate limit (Kombinasi 2 Lapis: IP dan Visitor ID)
+    const ip = getRateLimitKey(req);
+    const ipKey = `IP:${ip}`;
+    const fpKey = `FP:${visitor_id || 'unknown'}`;
+
+    // Lapisan 1: Limit IP (dilonggarkan untuk akomodasi WiFi kampus)
+    if (!checkRateLimit(ipKey, 300)) {
       return NextResponse.json(
-        { error: 'Terlalu banyak percobaan verifikasi. Silakan coba lagi dalam beberapa saat.' },
+        { error: 'Terlalu banyak request dari jaringan ini. Silakan coba lagi nanti.' },
         { status: 429 }
       );
     }
 
-    const body = await req.json();
-    const { nim_nip } = body;
+    // Lapisan 2: Limit Perangkat (ketat untuk mencegah spam visitor_id palsu)
+    if (!checkRateLimit(fpKey, 10)) {
+      return NextResponse.json(
+        { error: 'Terlalu banyak request dari perangkat ini. Silakan coba lagi nanti.' },
+        { status: 429 }
+      );
+    }
 
     if (!nim_nip) {
       return NextResponse.json({ error: 'NIM/NIP wajib diisi.' }, { status: 400 });

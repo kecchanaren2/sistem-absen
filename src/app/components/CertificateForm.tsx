@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import fpPromise from '@fingerprintjs/fingerprintjs';
 import { 
   Loader2, 
   Download, 
@@ -20,10 +21,25 @@ export default function CertificateForm() {
   const [namaPeserta, setNamaPeserta] = useState('');
 
   const [rolePeserta, setRolePeserta] = useState('');
+  const [visitorId, setVisitorId] = useState<string | null>(null);
 
   // Theme state (Dark / Light mode)
   const [isDark, setIsDark] = useState<boolean>(true);
   const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    // Initialize FingerprintJS
+    const getFingerprint = async () => {
+      try {
+        const fp = await fpPromise.load();
+        const result = await fp.get();
+        setVisitorId(result.visitorId);
+      } catch (error) {
+        console.error('Failed to get fingerprint', error);
+      }
+    };
+    getFingerprint();
+  }, []);
 
   // Initialize theme
   useEffect(() => {
@@ -68,6 +84,7 @@ export default function CertificateForm() {
         },
         body: JSON.stringify({
           nim_nip: cleanNimNip,
+          visitor_id: visitorId,
         }),
       });
 

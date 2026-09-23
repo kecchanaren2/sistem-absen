@@ -10,7 +10,6 @@ import { v4 as uuidv4 } from 'uuid';
 // Tracks requests by IP/identifier
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 100; // Dinaikkan ke 100 agar aman untuk pengguna WiFi Kampus
 
 function getRateLimitKey(req: Request): string {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
@@ -19,7 +18,7 @@ function getRateLimitKey(req: Request): string {
   return ip;
 }
 
-function checkRateLimit(key: string): boolean {
+function checkRateLimit(key: string, maxLimit: number): boolean {
   const now = Date.now();
   const record = requestCounts.get(key);
 
@@ -28,7 +27,7 @@ function checkRateLimit(key: string): boolean {
     return true;
   }
 
-  if (record.count >= RATE_LIMIT_MAX) {
+  if (record.count >= maxLimit) {
     return false;
   }
 
@@ -50,17 +49,30 @@ function isValidParticipantName(name: string): boolean {
 
 export async function POST(req: Request) {
   try {
-    // Check rate limit (Sudah diaktifkan kembali untuk Hari H)
-    const clientKey = getRateLimitKey(req);
-    if (!checkRateLimit(clientKey)) {
+    const body = await req.json();
+    const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude } = body;
+
+    // Check rate limit (Kombinasi 2 Lapis: IP dan Visitor ID)
+    const ip = getRateLimitKey(req);
+    const ipKey = `IP:${ip}`;
+    const fpKey = `FP:${visitor_id || 'unknown'}`;
+
+    // Lapisan 1: Limit IP (dilonggarkan untuk akomodasi WiFi kampus)
+    if (!checkRateLimit(ipKey, 300)) {
       return NextResponse.json(
-        { error: 'Terlalu banyak request. Silakan coba lagi dalam beberapa saat.' },
+        { error: 'Terlalu banyak request dari jaringan ini. Silakan coba lagi dalam beberapa saat.' },
         { status: 429 }
       );
     }
 
-    const body = await req.json();
-    const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude } = body;
+    // Lapisan 2: Limit Perangkat (ketat untuk mencegah spam visitor_id palsu)
+    if (!checkRateLimit(fpKey, 10)) {
+      return NextResponse.json(
+        { error: 'Terlalu banyak request dari perangkat ini. Silakan coba lagi dalam beberapa saat.' },
+        { status: 429 }
+      );
+    }
+
     const isPanitiaRole = role === 'panitia_mahasiswa' || role === 'panitia_dosen';
 
     // 1. Basic Validation
