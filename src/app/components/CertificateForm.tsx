@@ -98,16 +98,16 @@ export default function CertificateForm() {
   };
 
   return (
-    <div className="w-full max-w-md sm:max-w-lg mx-auto flex flex-col bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl shadow-2xl overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] transition-all duration-300">
+    <div className="w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-[760px] mx-auto flex flex-col bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl sm:rounded-[28px] md:rounded-[32px] shadow-2xl overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] transition-all duration-300">
       {/* Header Banner */}
       <div 
-        className="relative px-6 sm:px-8 pt-8 pb-9 text-white text-center flex flex-col items-center justify-center overflow-hidden"
+        className="relative px-6 sm:px-8 md:px-10 pt-8 sm:pt-9 md:pt-10 pb-9 sm:pb-10 md:pb-11 text-white text-center flex flex-col items-center justify-center overflow-hidden"
         style={{
           backgroundImage: 'linear-gradient(156.67deg, rgb(218, 60, 46) 0%, rgb(246, 207, 47) 100%)'
         }}
       >
         {/* Vector Background Overlay */}
-        <div className="-translate-x-1/2 -translate-y-1/2 absolute h-[576px] left-1/2 top-1/2 w-[487px] pointer-events-none opacity-85 mix-blend-screen select-none">
+        <div className="-translate-x-1/2 -translate-y-1/2 absolute h-[576px] md:h-[680px] left-1/2 top-1/2 w-[487px] md:w-[600px] pointer-events-none opacity-85 mix-blend-screen select-none">
           <img
             alt=""
             src="/dies-iconograph.svg"
@@ -116,15 +116,15 @@ export default function CertificateForm() {
         </div>
 
         {/* Ambient Blur Lights */}
-        <div className="absolute bg-white/10 blur-[40px] -right-8 -top-8 rounded-full size-32 pointer-events-none" />
-        <div className="absolute bg-[#ffee7c]/20 blur-[40px] -left-8 -bottom-8 rounded-full size-32 pointer-events-none" />
+        <div className="absolute bg-white/10 blur-[40px] -right-8 -top-8 rounded-full size-32 md:size-48 pointer-events-none" />
+        <div className="absolute bg-[#ffee7c]/20 blur-[40px] -left-8 -bottom-8 rounded-full size-32 md:size-48 pointer-events-none" />
 
         {/* Top Header Actions (Theme Toggle Button on the top left) */}
         <button
           type="button"
           onClick={toggleTheme}
           aria-label="Toggle Dark / Light Mode"
-          className="absolute top-4 left-4 z-20 !min-h-0 !min-w-0 p-[5px] rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
+          className="absolute top-4 left-4 z-20 !min-h-0 !min-w-0 p-[5px] sm:p-1.5 rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
         >
           {isDark ? (
             <Sun className="w-4 h-4 text-yellow-100 transition-transform duration-300 rotate-0 hover:rotate-45" />
@@ -134,35 +134,35 @@ export default function CertificateForm() {
         </button>
 
         {/* Frosted Logo Banner Capsule */}
-        <div className="relative z-10 backdrop-blur-[12px] bg-white/35 border border-white/40 flex items-center justify-center gap-3.5 px-5 py-2 rounded-[22px] mb-4 shadow-sm mt-4">
+        <div className="relative z-10 backdrop-blur-[12px] bg-white/35 border border-white/40 flex items-center justify-center gap-3.5 sm:gap-4 md:gap-5 px-5 sm:px-6 md:px-7 py-2 sm:py-2.5 rounded-[22px] md:rounded-[24px] mb-4 md:mb-5 shadow-sm mt-4">
           {/* Logo UNUD */}
           <img
             src="/logo unud 1.svg"
             alt="Logo Universitas Udayana"
-            className="h-9 w-auto object-contain"
+            className="h-9 sm:h-9 md:h-10 w-auto object-contain"
           />
           {/* Logo Kampus Merdeka */}
           <img
             src="/Logo_Kampus_Merdeka_Kemendikbud 3.svg"
             alt="Logo Kampus Merdeka"
-            className="h-8 w-auto object-contain"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
           {/* Logo Dies Natalis */}
           <img
             src="/logo-dies-hitam.svg"
             alt="Logo Dies Natalis"
-            className="h-8 w-auto object-contain"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
         </div>
 
         {/* Main Title */}
-        <h2 className="relative z-10 text-3xl sm:text-4xl font-extrabold tracking-[-0.75px] text-white drop-shadow-sm mb-2 leading-none">
+        <h2 className="relative z-10 text-3xl sm:text-4xl md:text-[2.6rem] font-extrabold tracking-[-0.75px] md:tracking-[-1px] text-white drop-shadow-sm mb-2 leading-none">
           PORTAL SERTIFIKAT
         </h2>
       </div>
 
       {/* Body Content */}
-      <div className="p-5 sm:p-7 flex flex-col space-y-6">
+      <div className="p-5 sm:p-7 md:p-9 flex flex-col space-y-6">
         
         <div>
           <h3 className="text-[17px] font-bold text-[#2c1e18] dark:text-[#f5ece7] mb-1.5">

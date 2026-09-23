@@ -10,7 +10,7 @@ export default function CertificatePage() {
         <div className="absolute -bottom-32 right-1/4 w-[500px] h-[450px] bg-red-500/10 dark:bg-red-800/8 rounded-full blur-[130px]" />
       </div>
 
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center p-3 sm:p-6 md:p-8 w-full max-w-xl mx-auto">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center p-3 sm:p-6 md:p-8 lg:p-12 w-full max-w-4xl mx-auto">
         <CertificateForm />
       </main>
 

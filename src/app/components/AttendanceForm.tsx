@@ -53,9 +53,13 @@ export default function AttendanceForm() {
 
   // Initialize theme
   useEffect(() => {
-    setIsMounted(true);
-    const isDarkCurrent = document.documentElement.classList.contains('dark');
-    setIsDark(isDarkCurrent);
+    // Synchronize client-side theme mounted state
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+      const isDarkCurrent = document.documentElement.classList.contains('dark');
+      setIsDark(isDarkCurrent);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const toggleTheme = () => {
@@ -80,21 +84,19 @@ export default function AttendanceForm() {
       const s2 = getSessionStatus(2, now);
       setStatus1(s1);
       setStatus2(s2);
+
+      // Auto select open session
+      if (!s1.isOpen && s2.isOpen) {
+        setHariAbsen((prev) => (prev !== 2 ? 2 : prev));
+      } else if (s1.isOpen && !s2.isOpen) {
+        setHariAbsen((prev) => (prev !== 1 ? 1 : prev));
+      }
     };
 
     updateTick();
     const interval = setInterval(updateTick, 1000);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    // Auto select open session
-    if (!status1.isOpen && status2.isOpen) {
-      setHariAbsen(2);
-    } else if (status1.isOpen && !status2.isOpen) {
-      setHariAbsen(1);
-    }
-  }, [status1.isOpen, status2.isOpen]);
 
   useEffect(() => {
     // Initialize FingerprintJS
@@ -190,10 +192,11 @@ export default function AttendanceForm() {
       try {
         position = await getLocation();
         setLocationStatus('success');
-      } catch (error: any) {
+      } catch (error: unknown) {
         setLocationStatus('error');
+        const errMessage = error instanceof Error ? error.message : '';
         throw new Error(
-          error.message === 'User denied Geolocation'
+          errMessage === 'User denied Geolocation'
             ? 'Mohon izinkan akses lokasi untuk melakukan absensi.'
             : 'Gagal mendapatkan lokasi. Pastikan GPS aktif.'
         );
@@ -237,8 +240,9 @@ export default function AttendanceForm() {
         setNamaPeserta(data.nama_peserta);
       }
       setEligibleForCertificate(data.eligibleForCertificate);
-    } catch (error: any) {
-      setMessage({ text: error.message, type: 'error' });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan';
+      setMessage({ text: errorMessage, type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -268,16 +272,16 @@ export default function AttendanceForm() {
   const isDosenRole = role === 'panitia_dosen' || role === 'peserta_dosen' || role === 'peserta_tendik';
 
   return (
-    <div className="w-full max-w-md sm:max-w-lg mx-auto flex flex-col bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl shadow-2xl overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] transition-all duration-300">
+    <div className="w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-[760px] mx-auto flex flex-col bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl sm:rounded-[28px] md:rounded-[32px] shadow-2xl overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] transition-all duration-300">
       {/* Header Banner with Exact Figma Gradient and Vector Iconography */}
       <div 
-        className="relative px-6 sm:px-8 pt-8 pb-9 text-white text-center flex flex-col items-center justify-center overflow-hidden"
+        className="relative px-6 sm:px-8 md:px-10 pt-8 sm:pt-9 md:pt-10 pb-9 sm:pb-10 md:pb-11 text-white text-center flex flex-col items-center justify-center overflow-hidden"
         style={{
           backgroundImage: 'linear-gradient(156.67deg, rgb(218, 60, 46) 0%, rgb(246, 207, 47) 100%)'
         }}
       >
         {/* Dies Iconograph Vector Background Overlay */}
-        <div className="-translate-x-1/2 -translate-y-1/2 absolute h-[576px] left-1/2 top-1/2 w-[487px] pointer-events-none opacity-85 mix-blend-screen select-none">
+        <div className="-translate-x-1/2 -translate-y-1/2 absolute h-[576px] md:h-[680px] left-1/2 top-1/2 w-[487px] md:w-[600px] pointer-events-none opacity-85 mix-blend-screen select-none">
           <img
             alt=""
             src="/dies-iconograph.svg"
@@ -286,8 +290,8 @@ export default function AttendanceForm() {
         </div>
 
         {/* Ambient Blur Lights */}
-        <div className="absolute bg-white/10 blur-[40px] -right-8 -top-8 rounded-full size-32 pointer-events-none" />
-        <div className="absolute bg-[#ffee7c]/20 blur-[40px] -left-8 -bottom-8 rounded-full size-32 pointer-events-none" />
+        <div className="absolute bg-white/10 blur-[40px] -right-8 -top-8 rounded-full size-32 md:size-48 pointer-events-none" />
+        <div className="absolute bg-[#ffee7c]/20 blur-[40px] -left-8 -bottom-8 rounded-full size-32 md:size-48 pointer-events-none" />
 
         {/* Top Header Actions */}
         {isMounted && (
@@ -297,7 +301,7 @@ export default function AttendanceForm() {
               type="button"
               onClick={toggleTheme}
               aria-label="Toggle Dark / Light Mode"
-              className="absolute top-4 right-4 z-20 !min-h-0 !min-w-0 p-[5px] rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
+              className="absolute top-4 right-4 z-20 !min-h-0 !min-w-0 p-[5px] sm:p-1.5 rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
             >
               {isDark ? (
                 <Sun className="w-4 h-4 text-yellow-100 transition-transform duration-300 rotate-0 hover:rotate-45" />
@@ -309,35 +313,35 @@ export default function AttendanceForm() {
         )}
 
         {/* Frosted Logo Banner Capsule */}
-        <div className="relative z-10 backdrop-blur-[12px] bg-white/35 border border-white/40 flex items-center justify-center gap-3.5 px-5 py-2 rounded-[22px] mb-4 shadow-sm">
+        <div className="relative z-10 backdrop-blur-[12px] bg-white/35 border border-white/40 flex items-center justify-center gap-3.5 sm:gap-4 md:gap-5 px-5 sm:px-6 md:px-7 py-2 sm:py-2.5 rounded-[22px] md:rounded-[24px] mb-4 md:mb-5 shadow-sm">
           {/* Logo UNUD */}
           <img
             src="/logo unud 1.svg"
             alt="Logo Universitas Udayana"
-            className="h-9 w-auto object-contain"
+            className="h-9 sm:h-9 md:h-10 w-auto object-contain"
           />
           {/* Logo Kampus Merdeka */}
           <img
             src="/Logo_Kampus_Merdeka_Kemendikbud 3.svg"
             alt="Logo Kampus Merdeka"
-            className="h-8 w-auto object-contain"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
           {/* Logo Dies Natalis */}
           <img
             src="/logo-dies-hitam.svg"
             alt="Logo Dies Natalis"
-            className="h-8 w-auto object-contain"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
         </div>
 
         {/* Main Title */}
-        <h2 className="relative z-10 text-3xl sm:text-4xl font-extrabold tracking-[-0.75px] text-white drop-shadow-sm mb-2 leading-none">
+        <h2 className="relative z-10 text-3xl sm:text-4xl md:text-[2.6rem] font-extrabold tracking-[-0.75px] md:tracking-[-1px] text-white drop-shadow-sm mb-2 leading-none">
           PORTAL ABSENSI
         </h2>
 
         {/* Live Clock Server Time Badge */}
         {currentTime && (
-          <div className="relative z-10 mt-1 flex items-center space-x-1.5 backdrop-blur-[12px] bg-black/25 dark:bg-black/35 px-3.5 py-1 rounded-full text-xs text-orange-50 font-mono border border-white/20 shadow-xs">
+          <div className="relative z-10 mt-1 flex items-center space-x-1.5 backdrop-blur-[12px] bg-black/25 dark:bg-black/35 px-3.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm text-orange-50 font-mono border border-white/20 shadow-xs">
             <Clock className="w-3.5 h-3.5 text-yellow-200" />
             <span>Waktu Server: {currentTime} WITA</span>
           </div>
@@ -345,9 +349,9 @@ export default function AttendanceForm() {
       </div>
 
       {/* Body Content */}
-      <div className="p-5 sm:p-7 flex flex-col space-y-5">
-        {/* Real-time Hardware & Geo Verification Status */}
-        <div className="flex flex-row items-center justify-around py-1 px-2">
+      <div className="p-5 sm:p-7 md:p-9 flex flex-col space-y-5 md:space-y-6">
+        {/* Real-time Hardware & Geo Verification Status (Borderless / No outline as it's non-interactive) */}
+        <div className="flex flex-row items-center justify-around py-1 sm:py-2 px-2 select-none pointer-events-none">
           {/* GPS Location Status */}
           <div className="flex flex-1 flex-col items-center justify-center space-y-1">
             {locationStatus === 'pending' ? (
@@ -357,7 +361,7 @@ export default function AttendanceForm() {
             ) : (
               <AlertCircle className="text-rose-500 w-5 h-5" />
             )}
-            <span className="text-xs font-semibold text-[#5a4439] dark:text-[#d1bfb5]">
+            <span className="text-xs sm:text-xs font-semibold text-[#5a4439] dark:text-[#d1bfb5]">
               Lokasi GPS
             </span>
             <span className="text-[11px] text-[#8c776c] dark:text-[#a8968c] font-medium">
