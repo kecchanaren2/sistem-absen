@@ -291,15 +291,7 @@ export default function AttendanceForm() {
 
         {/* Top Header Actions */}
         {isMounted && (
-          <div className="absolute inset-x-3 top-3 z-20 flex items-start justify-between gap-2 sm:inset-x-4 sm:top-4">
-            {/* Certificate Portal Button on the top left */}
-            <a
-              href="/sertifikat"
-              className="min-w-0 shrink px-3 py-1.5 rounded-full bg-[#3e2a21]/90 hover:bg-[#3e2a21] border border-white/10 text-white/90 text-xs sm:px-4 sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 active:scale-95 shadow-sm"
-            >
-              Sertifikat
-            </a>
-            
+          <div className="absolute inset-x-3 top-3 z-20 flex items-start justify-end gap-2 sm:inset-x-4 sm:top-4">
             {/* Theme Toggle Button on the top right */}
             <button
               type="button"
@@ -697,6 +689,13 @@ export default function AttendanceForm() {
               <span>Absen Sekarang</span>
             )}
           </button>
+
+          <a
+            href="/sertifikat"
+            className="w-full py-3 px-4 rounded-2xl font-bold text-sm sm:text-base transition-all flex justify-center items-center border border-[#d7bca8] dark:border-[#4f382c] bg-[#f3e7e1] dark:bg-[#2c1d17] text-[#4d352b] dark:text-[#f5ece7] hover:bg-[#ebdfd8] dark:hover:bg-[#362620] active:scale-[0.98] shadow-sm"
+          >
+            Portal Sertifikat
+          </a>
         </form>
       </div>
 

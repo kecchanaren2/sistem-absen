@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import fpPromise from '@fingerprintjs/fingerprintjs';
+import { useState } from 'react';
 import { 
   Loader2, 
   Download, 
@@ -21,32 +20,9 @@ export default function CertificateForm() {
   const [namaPeserta, setNamaPeserta] = useState('');
 
   const [rolePeserta, setRolePeserta] = useState('');
-  const [visitorId, setVisitorId] = useState<string | null>(null);
 
   // Theme state (Dark / Light mode)
   const [isDark, setIsDark] = useState<boolean>(true);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    // Initialize FingerprintJS
-    const getFingerprint = async () => {
-      try {
-        const fp = await fpPromise.load();
-        const result = await fp.get();
-        setVisitorId(result.visitorId);
-      } catch (error) {
-        console.error('Failed to get fingerprint', error);
-      }
-    };
-    getFingerprint();
-  }, []);
-
-  // Initialize theme
-  useEffect(() => {
-    setIsMounted(true);
-    const isDarkCurrent = document.documentElement.classList.contains('dark');
-    setIsDark(isDarkCurrent);
-  }, []);
 
   const toggleTheme = () => {
     const nextDark = !isDark;
@@ -84,7 +60,6 @@ export default function CertificateForm() {
         },
         body: JSON.stringify({
           nim_nip: cleanNimNip,
-          visitor_id: visitorId,
         }),
       });
 
@@ -102,8 +77,9 @@ export default function CertificateForm() {
       if (data.role) {
         setRolePeserta(data.role);
       }
-    } catch (error: any) {
-      setMessage({ text: error.message, type: 'error' });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat memverifikasi.';
+      setMessage({ text: errorMessage, type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -144,30 +120,18 @@ export default function CertificateForm() {
         <div className="absolute bg-[#ffee7c]/20 blur-[40px] -left-8 -bottom-8 rounded-full size-32 pointer-events-none" />
 
         {/* Top Header Actions (Theme Toggle Button on the top left) */}
-        {isMounted && (
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle Dark / Light Mode"
-            className="absolute top-4 left-4 z-20 !min-h-0 !min-w-0 p-[5px] rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
-          >
-            {isDark ? (
-              <Sun className="w-4 h-4 text-yellow-100 transition-transform duration-300 rotate-0 hover:rotate-45" />
-            ) : (
-              <Moon className="w-4 h-4 text-white transition-transform duration-300 rotate-0 hover:-rotate-12" />
-            )}
-          </button>
-        )}
-        
-        {/* Back to Portal Absensi button on top right */}
-        {isMounted && (
-          <Link
-            href="/"
-            className="absolute top-4 right-4 z-20 px-4 py-1.5 rounded-full backdrop-blur-[12px] bg-black/40 hover:bg-black/60 border border-white/20 text-white/90 text-sm font-semibold transition-all duration-200 active:scale-95 shadow-sm"
-          >
-            Absensi
-          </Link>
-        )}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label="Toggle Dark / Light Mode"
+          className="absolute top-4 left-4 z-20 !min-h-0 !min-w-0 p-[5px] rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
+        >
+          {isDark ? (
+            <Sun className="w-4 h-4 text-yellow-100 transition-transform duration-300 rotate-0 hover:rotate-45" />
+          ) : (
+            <Moon className="w-4 h-4 text-white transition-transform duration-300 rotate-0 hover:-rotate-12" />
+          )}
+        </button>
 
         {/* Frosted Logo Banner Capsule */}
         <div className="relative z-10 backdrop-blur-[12px] bg-white/35 border border-white/40 flex items-center justify-center gap-3.5 px-5 py-2 rounded-[22px] mb-4 shadow-sm mt-4">
@@ -286,6 +250,13 @@ export default function CertificateForm() {
               <span>Verifikasi</span>
             )}
           </button>
+
+          <Link
+            href="/"
+            className="w-full py-3 px-4 rounded-xl font-bold text-sm sm:text-base transition-all flex justify-center items-center border border-[#d7bca8] dark:border-[#4f382c] bg-[#f3e7e1] dark:bg-[#2c1d17] text-[#4d352b] dark:text-[#f5ece7] hover:bg-[#ebdfd8] dark:hover:bg-[#362620] active:scale-[0.98] shadow-sm"
+          >
+            Absensi
+          </Link>
         </form>
       </div>
     </div>
