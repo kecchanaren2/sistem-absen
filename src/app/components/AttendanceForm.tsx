@@ -313,11 +313,7 @@ export default function AttendanceForm() {
               type="button"
               onClick={toggleTheme}
               aria-label="Toggle Dark / Light Mode"
-<<<<<<< Updated upstream
               className="absolute top-4 right-4 z-20 !min-h-0 !min-w-0 p-[5px] sm:p-1.5 rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
-=======
-              className="!min-h-0 !min-w-0 p-[5px] rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
->>>>>>> Stashed changes
             >
               {isDark ? (
                 <Sun className="w-4 h-4 text-yellow-100 transition-transform duration-300 rotate-0 hover:rotate-45" />
@@ -753,6 +749,7 @@ export default function AttendanceForm() {
     </div>
   );
 }
+
 
 
 
