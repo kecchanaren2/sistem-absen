@@ -2,17 +2,17 @@
 
 import { useState, useEffect, useRef } from 'react';
 import fpPromise from '@fingerprintjs/fingerprintjs';
-import { 
-  ChevronDown, 
-  MapPin, 
+import {
+  ChevronDown,
+  MapPin,
   Smartphone,
-  Loader2, 
-  Download, 
-  CheckCircle, 
-  AlertCircle, 
-  Clock, 
-  Lock, 
-  UserCheck, 
+  Loader2,
+  Download,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Lock,
+  UserCheck,
   ShieldCheck,
   Sun,
   Moon
@@ -275,7 +275,7 @@ export default function AttendanceForm() {
   return (
     <div className="w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-[760px] mx-auto flex flex-col bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl sm:rounded-[28px] md:rounded-[32px] shadow-2xl overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] transition-all duration-300">
       {/* Header Banner with Exact Figma Gradient and Vector Iconography */}
-      <div 
+      <div
         className="relative px-6 sm:px-8 md:px-10 pt-8 sm:pt-9 md:pt-10 pb-9 sm:pb-10 md:pb-11 text-white text-center flex flex-col items-center justify-center overflow-hidden"
         style={{
           backgroundImage: 'linear-gradient(156.67deg, rgb(218, 60, 46) 0%, rgb(246, 207, 47) 100%)'
@@ -402,11 +402,10 @@ export default function AttendanceForm() {
         {/* Dynamic Alerts */}
         {message && (
           <div
-            className={`p-4 rounded-2xl flex items-start space-x-3 text-sm transition-all duration-300 ${
-              message.type === 'success'
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                : 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60 shadow-xs'
-            }`}
+            className={`p-4 rounded-2xl flex items-start space-x-3 text-sm transition-all duration-300 ${message.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
+              : 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60 shadow-xs'
+              }`}
           >
             {message.type === 'success' ? (
               <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
@@ -453,20 +452,18 @@ export default function AttendanceForm() {
                 type="button"
                 id="role-dropdown-btn"
                 onClick={() => setRoleOpen((o) => !o)}
-                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-sm font-semibold transition-all touch-manipulation active:scale-[0.99] bg-[#efe7e2] dark:bg-[#34241d] shadow-xs ${
-                  roleOpen
-                    ? 'border-orange-500 ring-2 ring-orange-500/20 text-[#2c1e18] dark:text-[#f5ece7] dark:border-orange-500'
-                    : 'border-[#decbc0] dark:border-[#4f382c] text-[#2c1e18] dark:text-[#f5ece7] hover:border-orange-400 dark:hover:border-orange-500'
-                }`}
+                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-sm font-semibold transition-all touch-manipulation active:scale-[0.99] bg-[#efe7e2] dark:bg-[#34241d] shadow-xs ${roleOpen
+                  ? 'border-orange-500 ring-2 ring-orange-500/20 text-[#2c1e18] dark:text-[#f5ece7] dark:border-orange-500'
+                  : 'border-[#decbc0] dark:border-[#4f382c] text-[#2c1e18] dark:text-[#f5ece7] hover:border-orange-400 dark:hover:border-orange-500'
+                  }`}
               >
                 <span className="flex items-center space-x-2.5">
                   <UserCheck className="w-4 h-4 flex-shrink-0 text-orange-500" />
                   <span>{selectedRole.label}</span>
                 </span>
                 <ChevronDown
-                  className={`w-4 h-4 text-[#8f7d73] dark:text-[#a39086] transition-transform duration-200 ${
-                    roleOpen ? 'rotate-180' : ''
-                  }`}
+                  className={`w-4 h-4 text-[#8f7d73] dark:text-[#a39086] transition-transform duration-200 ${roleOpen ? 'rotate-180' : ''
+                    }`}
                 />
               </button>
 
@@ -488,19 +485,16 @@ export default function AttendanceForm() {
                         setMessage(null);
                         setRoleOpen(false);
                       }}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation active:scale-[0.99] ${
-                        role === r.value
-                          ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 font-bold'
-                          : 'text-[#3d2b22] dark:text-[#e5d8d0] hover:bg-[#efe7e2] dark:hover:bg-[#38261e]'
-                      }`}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation active:scale-[0.99] ${role === r.value
+                        ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 font-bold'
+                        : 'text-[#3d2b22] dark:text-[#e5d8d0] hover:bg-[#efe7e2] dark:hover:bg-[#38261e]'
+                        }`}
                     >
                       <span
-                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                          role === r.value ? 'bg-orange-500' : 'bg-[#decbc0] dark:bg-[#4f382c]'
-                        }`}
+                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${role === r.value ? 'bg-orange-500' : 'bg-[#decbc0] dark:bg-[#4f382c]'
+                          }`}
                       />
                       <span>{r.label}</span>
-                      {role === r.value && <span className="ml-auto text-orange-500">âœ“</span>}
                     </button>
                   ))}
                   {/* Peserta group */}
@@ -518,19 +512,16 @@ export default function AttendanceForm() {
                         setMessage(null);
                         setRoleOpen(false);
                       }}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation active:scale-[0.99] ${
-                        role === r.value
-                          ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 font-bold'
-                          : 'text-[#3d2b22] dark:text-[#e5d8d0] hover:bg-[#efe7e2] dark:hover:bg-[#38261e]'
-                      }`}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation active:scale-[0.99] ${role === r.value
+                        ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 font-bold'
+                        : 'text-[#3d2b22] dark:text-[#e5d8d0] hover:bg-[#efe7e2] dark:hover:bg-[#38261e]'
+                        }`}
                     >
                       <span
-                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                          role === r.value ? 'bg-orange-500' : 'bg-[#decbc0] dark:bg-[#4f382c]'
-                        }`}
+                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${role === r.value ? 'bg-orange-500' : 'bg-[#decbc0] dark:bg-[#4f382c]'
+                          }`}
                       />
                       <span>{r.label}</span>
-                      {role === r.value && <span className="ml-auto text-orange-500">âœ“</span>}
                     </button>
                   ))}
                   <div className="h-1.5" />
@@ -608,11 +599,10 @@ export default function AttendanceForm() {
               <button
                 type="button"
                 onClick={() => setHariAbsen(1)}
-                className={`flex-1 flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border-2 transition-all touch-manipulation active:scale-[0.98] ${
-                  hariAbsen === 1
-                    ? 'border-orange-500 bg-[#f87158] dark:bg-[#532616] text-white shadow-md ring-2 ring-orange-500/25'
-                    : 'border-[#decbc0] dark:border-[#4f382c] bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23]'
-                } ${!status1.isOpen ? 'opacity-85' : 'cursor-pointer'}`}
+                className={`flex-1 flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border-2 transition-all touch-manipulation active:scale-[0.98] ${hariAbsen === 1
+                  ? 'border-orange-500 bg-[#f87158] dark:bg-[#532616] text-white shadow-md ring-2 ring-orange-500/25'
+                  : 'border-[#decbc0] dark:border-[#4f382c] bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23]'
+                  } ${!status1.isOpen ? 'opacity-85' : 'cursor-pointer'}`}
               >
                 <div className="flex items-center space-x-1.5 mb-1">
                   <span className="text-base font-extrabold">Pagi</span>
@@ -625,13 +615,12 @@ export default function AttendanceForm() {
                   </span>
                 </div>
                 <span
-                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${
-                    status1.isOpen
-                      ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                      : hariAbsen === 1
+                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${status1.isOpen
+                    ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                    : hariAbsen === 1
                       ? 'bg-black/20 text-white border border-white/20'
                       : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
-                  }`}
+                    }`}
                 >
                   {status1.isOpen ? 'BUKA' : status1.message}
                 </span>
@@ -641,11 +630,10 @@ export default function AttendanceForm() {
               <button
                 type="button"
                 onClick={() => setHariAbsen(2)}
-                className={`flex-1 flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border-2 transition-all touch-manipulation active:scale-[0.98] ${
-                  hariAbsen === 2
-                    ? 'border-orange-500 bg-[#f87158] dark:bg-[#532616] text-white shadow-md ring-2 ring-orange-500/25'
-                    : 'border-[#decbc0] dark:border-[#4f382c] bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23]'
-                } ${!status2.isOpen ? 'opacity-85' : 'cursor-pointer'}`}
+                className={`flex-1 flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border-2 transition-all touch-manipulation active:scale-[0.98] ${hariAbsen === 2
+                  ? 'border-orange-500 bg-[#f87158] dark:bg-[#532616] text-white shadow-md ring-2 ring-orange-500/25'
+                  : 'border-[#decbc0] dark:border-[#4f382c] bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23]'
+                  } ${!status2.isOpen ? 'opacity-85' : 'cursor-pointer'}`}
               >
                 <div className="flex items-center space-x-1.5 mb-1">
                   <span className="text-base font-extrabold">Siang</span>
@@ -658,13 +646,12 @@ export default function AttendanceForm() {
                   </span>
                 </div>
                 <span
-                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${
-                    status2.isOpen
-                      ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                      : hariAbsen === 2
+                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${status2.isOpen
+                    ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                    : hariAbsen === 2
                       ? 'bg-black/20 text-white border border-white/20'
                       : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
-                  }`}
+                    }`}
                 >
                   {status2.isOpen ? 'BUKA' : status2.message}
                 </span>
@@ -686,10 +673,9 @@ export default function AttendanceForm() {
           <button
             type="submit"
             disabled={!isMounted || isLoading || fpStatus !== 'success' || !selectedSessionStatus.isOpen}
-            className={`w-full py-4 px-4 rounded-2xl font-bold text-base sm:text-lg transition-all flex justify-center items-center mt-3 touch-manipulation min-h-[52px] ${
-              !isMounted || !selectedSessionStatus.isOpen ? 'bg-[#e6dcda] dark:bg-[#38261e] border border-[#d6c7c1] dark:border-[#4a3429] text-[#85726a] dark:text-[#8e786d] cursor-not-allowed shadow-none'
-                : 'bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] text-white shadow-lg shadow-orange-500/25 cursor-pointer'
-            }`}
+            className={`w-full py-4 px-4 rounded-2xl font-bold text-base sm:text-lg transition-all flex justify-center items-center mt-3 touch-manipulation min-h-[52px] ${!isMounted || !selectedSessionStatus.isOpen ? 'bg-[#e6dcda] dark:bg-[#38261e] border border-[#d6c7c1] dark:border-[#4a3429] text-[#85726a] dark:text-[#8e786d] cursor-not-allowed shadow-none'
+              : 'bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] text-white shadow-lg shadow-orange-500/25 cursor-pointer'
+              }`}
           >
             {isLoading ? (
               <>
@@ -704,6 +690,9 @@ export default function AttendanceForm() {
               <span>Absen Sekarang</span>
             )}
           </button>
+          <span className="text-[11px] text-[#9a7d6d] dark:text-[#c4a492] font-medium italic mt-0.5">
+            *setelah absensi, e-sertifikat dapat diunduh melalui portal sertifikat
+          </span>
 
           <a
             href="/sertifikat"
@@ -724,7 +713,7 @@ export default function AttendanceForm() {
               </div>
               <h3 className="text-xl font-extrabold text-[#2c1e18] dark:text-[#f5ece7] mb-2">Konfirmasi Absensi</h3>
               <p className="text-sm text-[#7e695d] dark:text-[#b09d92] font-medium mb-6 leading-relaxed">
-                PASTIKAN DATA ANDA SUDAH <strong className="text-amber-600 dark:text-amber-500">100% BENAR</strong>.<br/>Absen hanya bisa dilakukan 1x per sesi dan tidak dapat diubah kembali.
+                PASTIKAN DATA ANDA SUDAH <strong className="text-amber-600 dark:text-amber-500">100% BENAR</strong>.<br />Absen hanya bisa dilakukan 1x per sesi dan tidak dapat diubah kembali.
               </p>
               <div className="flex flex-col gap-3">
                 <button

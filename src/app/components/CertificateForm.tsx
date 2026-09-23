@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  Loader2, 
-  Download, 
-  CheckCircle, 
-  AlertCircle, 
+import {
+  Loader2,
+  Download,
+  CheckCircle,
+  AlertCircle,
   ShieldCheck,
   Sun,
   Moon
@@ -100,7 +100,7 @@ export default function CertificateForm() {
   return (
     <div className="w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-[760px] mx-auto flex flex-col bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl sm:rounded-[28px] md:rounded-[32px] shadow-2xl overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] transition-all duration-300">
       {/* Header Banner */}
-      <div 
+      <div
         className="relative px-6 sm:px-8 md:px-10 pt-8 sm:pt-9 md:pt-10 pb-9 sm:pb-10 md:pb-11 text-white text-center flex flex-col items-center justify-center overflow-hidden"
         style={{
           backgroundImage: 'linear-gradient(156.67deg, rgb(218, 60, 46) 0%, rgb(246, 207, 47) 100%)'
@@ -163,7 +163,7 @@ export default function CertificateForm() {
 
       {/* Body Content */}
       <div className="p-5 sm:p-7 md:p-9 flex flex-col space-y-6">
-        
+
         <div>
           <h3 className="text-[17px] font-bold text-[#2c1e18] dark:text-[#f5ece7] mb-1.5">
             Masukkan Identitas Presensi Anda
@@ -176,11 +176,10 @@ export default function CertificateForm() {
         {/* Dynamic Alerts */}
         {message && (
           <div
-            className={`p-4 rounded-2xl flex items-start space-x-3 text-sm transition-all duration-300 ${
-              message.type === 'success'
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                : 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60 shadow-xs'
-            }`}
+            className={`p-4 rounded-2xl flex items-start space-x-3 text-sm transition-all duration-300 ${message.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
+              : 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60 shadow-xs'
+              }`}
           >
             {message.type === 'success' ? (
               <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
@@ -216,7 +215,7 @@ export default function CertificateForm() {
 
         {/* Main Form */}
         <form onSubmit={handleSubmit} className="flex flex-col space-y-6">
-          
+
           {/* NIM / NIP Input */}
           <div className="flex flex-col space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
@@ -250,7 +249,11 @@ export default function CertificateForm() {
               <span>Verifikasi</span>
             )}
           </button>
-
+          <span className="text-[11px] text-[#9a7d6d] dark:text-[#c4a492] font-medium italic mt-0.5">
+            *lakukan absensi terlebih dahulu supaya e-sertifikat dapat diproses
+            <br />
+            e-sertifikat akan dikirim ke email yang terdaftar saat absensi
+          </span>
           <Link
             href="/"
             className="w-full py-3 px-4 rounded-xl font-bold text-sm sm:text-base transition-all flex justify-center items-center border border-[#d7bca8] dark:border-[#4f382c] bg-[#f3e7e1] dark:bg-[#2c1d17] text-[#4d352b] dark:text-[#f5ece7] hover:bg-[#ebdfd8] dark:hover:bg-[#362620] active:scale-[0.98] shadow-sm"
