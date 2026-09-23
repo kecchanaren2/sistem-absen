@@ -1,6 +1,6 @@
 export const EVENT_LATITUDE = -8.7980556;
 export const EVENT_LONGITUDE = 115.1723917;
-export const MAX_DISTANCE_METERS = 50;
+export const MAX_DISTANCE_METERS = 120;
 export const BYPASS_GEOFENCING = process.env.NEXT_PUBLIC_BYPASS_GEOFENCING === 'true';
 
 /**
