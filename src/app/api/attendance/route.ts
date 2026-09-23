@@ -57,8 +57,9 @@ export async function POST(req: Request) {
     const ipKey = `IP:${ip}`;
     const fpKey = `FP:${visitor_id || 'unknown'}`;
 
-    // Lapisan 1: Limit IP (dilonggarkan untuk akomodasi WiFi kampus)
-    if (!checkRateLimit(ipKey, 300)) {
+    // Lapisan 1: Limit IP (sangat longgar — keamanan utama ada di Geofencing + Jadwal + Unique Index NIM)
+    // 1.000/menit = akomodasi hingga 1.000 mahasiswa WiFi kampus yang berbagi 1 IP dalam 1 menit
+    if (!checkRateLimit(ipKey, 1000)) {
       return NextResponse.json(
         { error: 'Terlalu banyak request dari jaringan ini. Silakan coba lagi dalam beberapa saat.' },
         { status: 429 }
