@@ -45,7 +45,13 @@ export function getSessionStatus(sessionId: 1 | 2, customDate?: Date): SessionSt
   }
 
   const now = customDate || new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  
+  // Konversi waktu saat ini ke zona waktu WITA (Bali - Asia/Makassar)
+  // Ini memastikan server (UTC) dan client (zona waktu sembarangan) selalu memiliki pemahaman jam yang persis sama.
+  const witaString = now.toLocaleString('en-US', { timeZone: 'Asia/Makassar' });
+  const baliTime = new Date(witaString);
+  
+  const currentMinutes = baliTime.getHours() * 60 + baliTime.getMinutes();
 
   const [startH, startM] = config.startTime.split(':').map(Number);
   const [endH, endM] = config.endTime.split(':').map(Number);
