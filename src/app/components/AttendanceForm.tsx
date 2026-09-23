@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import fpPromise from '@fingerprintjs/fingerprintjs';
@@ -18,6 +18,7 @@ import {
   Moon
 } from 'lucide-react';
 import { getSessionStatus, SESSION_SCHEDULES, SessionStatus } from '@/lib/schedule';
+import QRCodeWidget from './QRCodeWidget';
 
 export default function AttendanceForm() {
   const [email, setEmail] = useState('');
@@ -293,15 +294,30 @@ export default function AttendanceForm() {
         <div className="absolute bg-white/10 blur-[40px] -right-8 -top-8 rounded-full size-32 md:size-48 pointer-events-none" />
         <div className="absolute bg-[#ffee7c]/20 blur-[40px] -left-8 -bottom-8 rounded-full size-32 md:size-48 pointer-events-none" />
 
+
         {/* Top Header Actions */}
         {isMounted && (
-          <div className="absolute inset-x-3 top-3 z-20 flex items-start justify-end gap-2 sm:inset-x-4 sm:top-4">
-            {/* Theme Toggle Button on the top right */}
+          <div className="absolute inset-x-3 top-3 z-20 flex items-start justify-between gap-2 sm:inset-x-4 sm:top-4">
+            {/* QR Code Widget — pojok kiri atas card */}
+            <QRCodeWidget
+              logoUrl="/qr.png"
+              colorDark="#114084"
+              displaySize={64}
+              downloadFilename="qr-absensi-dies64.png"
+              showDownload={true}
+              label=""
+            />
+
+            {/* Theme Toggle Button — pojok kanan atas */}
             <button
               type="button"
               onClick={toggleTheme}
               aria-label="Toggle Dark / Light Mode"
+<<<<<<< Updated upstream
               className="absolute top-4 right-4 z-20 !min-h-0 !min-w-0 p-[5px] sm:p-1.5 rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
+=======
+              className="!min-h-0 !min-w-0 p-[5px] rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
+>>>>>>> Stashed changes
             >
               {isDark ? (
                 <Sun className="w-4 h-4 text-yellow-100 transition-transform duration-300 rotate-0 hover:rotate-45" />
@@ -365,7 +381,7 @@ export default function AttendanceForm() {
               Lokasi GPS
             </span>
             <span className="text-[11px] text-[#8c776c] dark:text-[#a8968c] font-medium">
-              {locationStatus === 'success' ? 'Terverifikasi ✓' : locationStatus === 'error' ? 'Gagal ✗' : 'Siap'}
+              {locationStatus === 'success' ? 'Terverifikasi âœ“' : locationStatus === 'error' ? 'Gagal âœ—' : 'Siap'}
             </span>
           </div>
 
@@ -382,7 +398,7 @@ export default function AttendanceForm() {
               Perangkat
             </span>
             <span className="text-[11px] text-[#8c776c] dark:text-[#a8968c] font-medium">
-              {fpStatus === 'success' ? 'Terverifikasi ✓' : fpStatus === 'error' ? 'Gagal ✗' : 'Memeriksa...'}
+              {fpStatus === 'success' ? 'Terverifikasi âœ“' : fpStatus === 'error' ? 'Gagal âœ—' : 'Memeriksa...'}
             </span>
           </div>
         </div>
@@ -412,7 +428,7 @@ export default function AttendanceForm() {
               <ShieldCheck className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-[#3d2417] dark:text-orange-100 mb-1">
-              Selamat! Anda Berhak E-Sertifikat 🎉
+              Selamat! Anda Berhak E-Sertifikat ðŸŽ‰
             </h3>
             <p className="text-[#69422f] dark:text-orange-300 text-xs mb-4 leading-relaxed">
               Seluruh sesi absensi Anda telah tercatat dengan valid.
@@ -430,7 +446,7 @@ export default function AttendanceForm() {
 
         {/* Main Attendance Form */}
         <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
-          {/* Status / Peran — Custom Dropdown */}
+          {/* Status / Peran â€” Custom Dropdown */}
           <div className="flex flex-col space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
               STATUS / PERAN
@@ -488,7 +504,7 @@ export default function AttendanceForm() {
                         }`}
                       />
                       <span>{r.label}</span>
-                      {role === r.value && <span className="ml-auto text-orange-500">✓</span>}
+                      {role === r.value && <span className="ml-auto text-orange-500">âœ“</span>}
                     </button>
                   ))}
                   {/* Peserta group */}
@@ -518,7 +534,7 @@ export default function AttendanceForm() {
                         }`}
                       />
                       <span>{r.label}</span>
-                      {role === r.value && <span className="ml-auto text-orange-500">✓</span>}
+                      {role === r.value && <span className="ml-auto text-orange-500">âœ“</span>}
                     </button>
                   ))}
                   <div className="h-1.5" />
@@ -673,10 +689,9 @@ export default function AttendanceForm() {
           {/* Submit / Action Button */}
           <button
             type="submit"
-            disabled={isLoading || fpStatus !== 'success' || !selectedSessionStatus.isOpen}
+            disabled={!isMounted || isLoading || fpStatus !== 'success' || !selectedSessionStatus.isOpen}
             className={`w-full py-4 px-4 rounded-2xl font-bold text-base sm:text-lg transition-all flex justify-center items-center mt-3 touch-manipulation min-h-[52px] ${
-              !selectedSessionStatus.isOpen
-                ? 'bg-[#e6dcda] dark:bg-[#38261e] border border-[#d6c7c1] dark:border-[#4a3429] text-[#85726a] dark:text-[#8e786d] cursor-not-allowed shadow-none'
+              !isMounted || !selectedSessionStatus.isOpen ? 'bg-[#e6dcda] dark:bg-[#38261e] border border-[#d6c7c1] dark:border-[#4a3429] text-[#85726a] dark:text-[#8e786d] cursor-not-allowed shadow-none'
                 : 'bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] text-white shadow-lg shadow-orange-500/25 cursor-pointer'
             }`}
           >
@@ -738,3 +753,7 @@ export default function AttendanceForm() {
     </div>
   );
 }
+
+
+
+

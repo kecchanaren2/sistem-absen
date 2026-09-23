@@ -1,4 +1,4 @@
-import AttendanceForm from './components/AttendanceForm';
+﻿import AttendanceForm from './components/AttendanceForm';
 
 export default function Home() {
   return (
@@ -15,7 +15,7 @@ export default function Home() {
       </main>
 
       <footer className="relative z-10 py-5 text-center text-xs font-medium text-[#8f7e75] dark:text-[#9e8b81] tracking-wide">
-        © 2026 Dies Natalis 64. All rights reserved.
+        Ac 2026 Dies Natalis 64. All rights reserved.
       </footer>
     </div>
   );
