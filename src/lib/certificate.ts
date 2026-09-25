@@ -1,80 +1,90 @@
 export async function generateAndDownloadCertificate(namaPeserta: string, role: string) {
   // Tentukan file template berdasarkan role
   const isPanitia = role && role.toLowerCase().includes('panitia');
-  const imageUrl = isPanitia ? '/sertifikat-panitia.jpeg' : '/sertifikat-peserta.jpeg';
+  
+  // Panitia mendapat 2 sertifikat:
+  //   Lembar 1 = Sertifikat sebagai Panitia
+  //   Lembar 2 = Sertifikat sebagai Peserta (karena panitia juga ikut sebagai peserta)
+  // Peserta biasa hanya mendapat 1 sertifikat peserta
+  const templates = isPanitia 
+    ? ['/sertifikat-panitia.jpeg', '/sertifikat-peserta.jpeg'] 
+    : ['/sertifikat-peserta.jpeg'];
 
-  return new Promise<void>((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous'; // Berguna jika template diload dari domain lain nanti
+  // Loop untuk mencetak semua sertifikat yang ada di dalam array
+  for (let i = 0; i < templates.length; i++) {
+    const imageUrl = templates[i];
 
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        // Set ukuran canvas sama persis dengan ukuran asli gambar template
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
+    await new Promise<void>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous'; 
 
-        if (!ctx) {
-          throw new Error('Canvas 2D context not supported');
-        }
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
 
-        // 1. Gambar template sertifikat sebagai background utama
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          if (!ctx) {
+            throw new Error('Canvas 2D context not supported');
+          }
 
-        // 2. Gambar teks nama peserta
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#000000'; // Warna hitam, bisa disesuaikan nanti
+          // 1. Gambar template sertifikat
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Kapitalisasi nama
-        const capitalizedName = namaPeserta.replace(/\b\w/g, l => l.toUpperCase());
+          // 2. Tulis teks nama peserta
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#000000'; 
 
-        // Kalkulasi ukuran font dinamis (relatif terhadap lebar template)
-        // Kita asumsikan ukuran ideal font adalah sekitar 6% dari lebar sertifikat
-        let fontSize = Math.floor(canvas.width * 0.05);
-        ctx.font = `bold ${fontSize}px "Times New Roman", Times, serif`;
-
-        let textWidth = ctx.measureText(capitalizedName).width;
-        // Batas maksimal lebar teks adalah 70% dari lebar sertifikat
-        const maxTextWidth = canvas.width * 0.7;
-
-        // Mengecilkan ukuran font jika namanya terlalu panjang
-        while (textWidth > maxTextWidth && fontSize > 10) {
-          fontSize -= 2;
+          const capitalizedName = namaPeserta.replace(/\b\w/g, l => l.toUpperCase());
+          let fontSize = Math.floor(canvas.width * 0.05);
           ctx.font = `bold ${fontSize}px "Times New Roman", Times, serif`;
-          textWidth = ctx.measureText(capitalizedName).width;
+
+          let textWidth = ctx.measureText(capitalizedName).width;
+          const maxTextWidth = canvas.width * 0.7;
+
+          while (textWidth > maxTextWidth && fontSize > 10) {
+            fontSize -= 2;
+            ctx.font = `bold ${fontSize}px "Times New Roman", Times, serif`;
+            textWidth = ctx.measureText(capitalizedName).width;
+          }
+
+          const xPos = canvas.width / 2;
+          const yPos = canvas.height * 0.31;
+          ctx.fillText(capitalizedName, xPos, yPos);
+
+          // 3. Download PNG
+          const dataUrl = canvas.toDataURL('image/png', 1.0);
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          
+          // Beri nama file yang berbeda jika ada lebih dari 1 sertifikat
+          const fileName = templates.length > 1 
+            ? `Sertifikat - ${capitalizedName} - Lembar ${i + 1}.png` 
+            : `Sertifikat - ${capitalizedName}.png`;
+            
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          resolve();
+        } catch (err) {
+          reject(err);
         }
+      };
 
-        // Posisi nama: Di tengah secara horizontal.
-        // Untuk vertikal (Y), ini perkiraan umum di tengah agak ke bawah (misal 55% dari atas).
-        // Sesuaikan angka 0.55 ini (0.0 sampai 1.0) jika posisi namanya kurang pas di template Anda!
-        const xPos = canvas.width / 2;
-        const yPos = canvas.height * 0.31;
+      img.onerror = () => {
+        reject(new Error(`Gagal memuat template sertifikat: ${imageUrl}`));
+      };
 
-        ctx.fillText(capitalizedName, xPos, yPos);
+      img.src = imageUrl;
+    });
 
-        // 3. Ekspor ke PNG dan Trigger Download
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = `Sertifikat - ${capitalizedName}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        resolve();
-      } catch (err) {
-        reject(err);
-      }
-    };
-
-    img.onerror = () => {
-      reject(new Error(`Gagal memuat template sertifikat: ${imageUrl}`));
-    };
-
-    // Mulai memuat gambar
-    img.src = imageUrl;
-  });
+    // Beri jeda 500ms antar download agar browser tidak mengira ini spam download dan memblokirnya
+    if (i < templates.length - 1) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
 }
