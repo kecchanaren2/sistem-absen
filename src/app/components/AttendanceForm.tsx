@@ -389,7 +389,7 @@ export default function AttendanceForm() {
               Lokasi GPS
             </span>
             <span className="text-[11px] text-[#8c776c] dark:text-[#a8968c] font-medium">
-              {locationStatus === 'success' ? 'Terverifikasi âœ“' : locationStatus === 'error' ? 'Gagal âœ—' : 'Siap'}
+              {locationStatus === 'success' ? 'Terverifikasi ✓' : locationStatus === 'error' ? 'Gagal ✗' : 'Siap'}
             </span>
           </div>
 
@@ -406,7 +406,7 @@ export default function AttendanceForm() {
               Perangkat
             </span>
             <span className="text-[11px] text-[#8c776c] dark:text-[#a8968c] font-medium">
-              {fpStatus === 'success' ? 'Terverifikasi âœ“' : fpStatus === 'error' ? 'Gagal âœ—' : 'Memeriksa...'}
+              {fpStatus === 'success' ? 'Terverifikasi ✓' : fpStatus === 'error' ? 'Gagal ✗' : 'Memeriksa...'}
             </span>
           </div>
         </div>
@@ -453,7 +453,7 @@ export default function AttendanceForm() {
 
         {/* Main Attendance Form */}
         <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
-          {/* Status / Peran â€” Custom Dropdown */}
+          {/* Status / Peran — Custom Dropdown */}
           <div className="flex flex-col space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
               STATUS / PERAN
