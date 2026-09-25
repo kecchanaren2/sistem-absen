@@ -154,9 +154,18 @@ export default function AttendanceForm() {
     // Validation for NIM / NIP format
     const cleanNimNip = nimNip.trim();
     const isDosenRole = role === 'panitia_dosen' || role === 'peserta_dosen' || role === 'peserta_tendik';
+
+    if (!cleanNimNip) {
+      setMessage({
+        text: isDosenRole ? 'NIP tidak boleh kosong.' : 'NIM tidak boleh kosong.',
+        type: 'error',
+      });
+      return;
+    }
+
     if (isDosenRole) {
-      if (!/^\d{18}$/.test(cleanNimNip)) {
-        setMessage({ text: 'NIP harus berupa 18 digit angka.', type: 'error' });
+      if (!/^\d{19}$/.test(cleanNimNip)) {
+        setMessage({ text: 'NIP harus berupa 19 digit angka.', type: 'error' });
         return;
       }
     } else {
@@ -590,13 +599,13 @@ export default function AttendanceForm() {
             <input
               type="text"
               required
-              maxLength={isDosenRole ? 18 : 10}
+              maxLength={isDosenRole ? 19 : 10}
               value={nimNip}
               onChange={(e) => {
                 setNimNip(e.target.value.replace(/\D/g, ''));
               }}
               className="w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-[#decbc0] dark:border-[#4f382c] focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] transition-all shadow-xs touch-manipulation font-mono tracking-wider"
-              placeholder={isDosenRole ? 'Misal: 198110072008121000' : 'Misal: 1234567890'}
+              placeholder={isDosenRole ? 'Misal: 1981100720081210001' : 'Misal: 1234567890'}
               autoComplete="off"
             />
           </div>

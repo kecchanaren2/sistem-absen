@@ -47,7 +47,7 @@ export default function CertificateForm() {
     const cleanNimNip = nimNip.trim();
 
     if (!cleanNimNip) {
-      setMessage({ text: 'NIM/NIP wajib diisi.', type: 'error' });
+      setMessage({ text: 'NIP wajib diisi.', type: 'error' });
       setIsLoading(false);
       return;
     }
@@ -178,10 +178,10 @@ export default function CertificateForm() {
 
         <div>
           <h3 className="text-[17px] font-bold text-[#2c1e18] dark:text-[#f5ece7] mb-1.5">
-            Masukkan Identitas Presensi Anda
+            Masukkan NIP Anda
           </h3>
           <p className="text-sm text-[#7e695d] dark:text-[#a39086] leading-relaxed">
-            Gunakan <strong className="font-semibold text-[#5a4439] dark:text-[#c9b8ae]">NIM</strong> (untuk Mahasiswa) atau <strong className="font-semibold text-[#5a4439] dark:text-[#c9b8ae]">NIP</strong> (untuk Dosen/Tendik/Umum) yang Anda input saat mengisi formulir presensi kegiatan.
+            Gunakan <strong className="font-semibold text-[#5a4439] dark:text-[#c9b8ae]">NIP</strong> yang Anda input saat mengisi formulir presensi kegiatan.
           </p>
         </div>
 
@@ -228,17 +228,19 @@ export default function CertificateForm() {
         {/* Main Form */}
         <form onSubmit={handleSubmit} className="flex flex-col space-y-6">
 
-          {/* NIM / NIP Input */}
+          {/* NIP Input */}
           <div className="flex flex-col space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
-              NIM/NIP
+              NIP
             </label>
             <input
               type="text"
               required
               value={nimNip}
+              maxLength={19}
               onChange={(e) => {
-                setNimNip(e.target.value.replace(/\D/g, ''));
+                const numericValue = e.target.value.replace(/\D/g, '').slice(0, 19);
+                setNimNip(numericValue);
               }}
               className="w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-[#decbc0] dark:border-[#4f382c] focus:ring-2 focus:ring-[#04b077] focus:border-[#04b077] bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] transition-all shadow-xs touch-manipulation font-mono tracking-wider"
               placeholder="Misal: 123456789"

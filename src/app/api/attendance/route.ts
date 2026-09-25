@@ -119,8 +119,8 @@ export async function POST(req: Request) {
     const cleanNimNip = String(nim_nip).trim();
     const isDosenRole = role === 'panitia_dosen' || role === 'peserta_dosen' || role === 'peserta_tendik';
     if (isDosenRole) {
-      if (!/^\d{18}$/.test(cleanNimNip)) {
-        return NextResponse.json({ error: 'NIP harus berupa 18 digit angka.' }, { status: 400 });
+      if (!/^\d{19}$/.test(cleanNimNip)) {
+        return NextResponse.json({ error: 'NIP harus berupa 19 digit angka.' }, { status: 400 });
       }
     } else {
       // Mahasiswa / Panitia Mahasiswa / Peserta Mahasiswa
