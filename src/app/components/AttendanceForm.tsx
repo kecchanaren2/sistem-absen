@@ -137,48 +137,32 @@ export default function AttendanceForm() {
       throw new Error('Geolocation tidak didukung oleh browser Anda');
     }
 
-    const getSinglePosition = (): Promise<GeolocationPosition> => {
-      return new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
+    return new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const acc = position.coords.accuracy;
+          // Deteksi Fake GPS / Mock Location (akurasi 0m / < 1m)
+          if (acc < 1.0) {
+            return reject(new Error('Terdeteksi lokasi tidak valid (Fake GPS / Mock Location). Harap gunakan GPS asli perangkat Anda.'));
+          }
+          // Deteksi Sinyal GPS Terlalu Lemah / Kurang Akurat (> 150m)
+          if (acc > 150) {
+            return reject(new Error(`Sinyal GPS kurang akurat (akurasi ${Math.round(acc)} meter). Harap aktifkan Mode Akurasi Tinggi pada GPS HP Anda.`));
+          }
+          resolve(position);
+        },
+        (error) => reject(error),
+        {
           enableHighAccuracy: true,
           timeout: 10000,
           maximumAge: 0,
-        });
-      });
-    };
-
-    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-    const samples: GeolocationPosition[] = [];
-
-    // GPS Drift Sampling (3x dengan jeda 1 detik)
-    for (let i = 0; i < 3; i++) {
-      const pos = await getSinglePosition();
-      samples.push(pos);
-      if (i < 2) await delay(1000);
-    }
-
-    const [pos1, pos2, pos3] = samples;
-
-    // Kriteria a: Koordinat Statis
-    if (
-      pos1.coords.latitude === pos2.coords.latitude &&
-      pos1.coords.longitude === pos2.coords.longitude &&
-      pos2.coords.latitude === pos3.coords.latitude &&
-      pos2.coords.longitude === pos3.coords.longitude
-    ) {
-      throw new Error('error GPS tidak valid');
-    }
-
-    // Kriteria b: Akurasi Tidak Wajar
-    if (pos3.coords.accuracy <= 1 || pos3.coords.accuracy > 150) {
-      throw new Error('Sinyal GPS tidak valid/tidak akurat');
-    }
-
-    return pos3;
+        }
+      );
+    });
   };
 
-  const generateSignature = async (latitude: number, longitude: number, timestamp: number): Promise<string> => {
-    const message = `${latitude}|${longitude}|${timestamp}|SECRET_SALT_2026`;
+  const generateSignature = async (latitude: number, longitude: number, accuracy: number, timestamp: number): Promise<string> => {
+    const message = `${latitude}|${longitude}|${accuracy}|${timestamp}|SECRET_SALT_2026`;
     const msgBuffer = new TextEncoder().encode(message);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -255,7 +239,8 @@ export default function AttendanceForm() {
 
       // 3. Generate Anti-Burp Signature
       const timestamp = Date.now();
-      const signature = await generateSignature(position.coords.latitude, position.coords.longitude, timestamp);
+      const accuracy = position.coords.accuracy;
+      const signature = await generateSignature(position.coords.latitude, position.coords.longitude, accuracy, timestamp);
 
       // 4. Submit to API
       const response = await fetch('/api/attendance', {
@@ -273,6 +258,7 @@ export default function AttendanceForm() {
           local_token: localToken,
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          accuracy,
           timestamp,
           signature,
         }),

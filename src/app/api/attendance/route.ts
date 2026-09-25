@@ -50,7 +50,7 @@ function isValidParticipantName(name: string): boolean {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude, timestamp, signature } = body;
+    const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude, accuracy, timestamp, signature } = body;
 
     // Check rate limit (Kombinasi 2 Lapis: IP dan Visitor ID)
     const ip = getRateLimitKey(req);
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     const isPanitiaRole = role === 'panitia_mahasiswa' || role === 'panitia_dosen';
 
     // 1. Basic Validation
-    if (!email || (!isPanitiaRole && !nama_peserta) || !nim_nip || !Sesi || !visitor_id || !latitude || !longitude) {
+    if (!email || (!isPanitiaRole && !nama_peserta) || !nim_nip || !Sesi || !visitor_id || latitude === undefined || longitude === undefined || accuracy === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -91,11 +91,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Request kadaluarsa (terindikasi intercept)' }, { status: 403 });
     }
 
-    const expectedMessage = `${latitude}|${longitude}|${timestamp}|SECRET_SALT_2026`;
+    const expectedMessage = `${latitude}|${longitude}|${accuracy}|${timestamp}|SECRET_SALT_2026`;
     const expectedSignature = crypto.createHash('sha256').update(expectedMessage).digest('hex');
 
     if (signature !== expectedSignature) {
       return NextResponse.json({ error: 'Data request dimanipulasi!' }, { status: 403 });
+    }
+
+    // Validation Fake GPS / Mock Location (< 1m accuracy) & Weak Accuracy (> 150m accuracy)
+    const accuracyNumber = Number(accuracy);
+    if (!Number.isFinite(accuracyNumber) || accuracyNumber < 1.0) {
+      return NextResponse.json({ error: 'Terdeteksi lokasi tidak valid (Fake GPS / Mock Location). Harap gunakan GPS asli perangkat.' }, { status: 400 });
+    }
+    if (accuracyNumber > 150) {
+      return NextResponse.json({ error: `Sinyal GPS kurang akurat (${Math.round(accuracyNumber)}m). Harap aktifkan High Accuracy GPS.` }, { status: 400 });
     }
 
     if (!isPanitiaRole && !isValidParticipantName(String(nama_peserta))) {
