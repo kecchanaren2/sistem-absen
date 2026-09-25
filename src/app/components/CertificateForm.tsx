@@ -178,10 +178,10 @@ export default function CertificateForm() {
 
         <div>
           <h3 className="text-[17px] font-bold text-[#2c1e18] dark:text-[#f5ece7] mb-1.5">
-            Masukkan NIP Anda
+            Masukkan NIM/NIP Anda
           </h3>
           <p className="text-sm text-[#7e695d] dark:text-[#a39086] leading-relaxed">
-            Gunakan <strong className="font-semibold text-[#5a4439] dark:text-[#c9b8ae]">NIP</strong> yang Anda input saat mengisi formulir presensi kegiatan.
+            Gunakan <strong className="font-semibold text-[#5a4439] dark:text-[#c9b8ae]">NIM/NIP</strong> yang Anda input saat mengisi formulir presensi kegiatan.
           </p>
         </div>
 
@@ -231,7 +231,7 @@ export default function CertificateForm() {
           {/* NIP Input */}
           <div className="flex flex-col space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
-              NIP
+              NIM/NIP
             </label>
             <input
               type="text"
