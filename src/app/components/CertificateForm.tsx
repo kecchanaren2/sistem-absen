@@ -134,22 +134,34 @@ export default function CertificateForm() {
         </button>
 
         {/* Frosted Logo Banner Capsule */}
-        <div className="relative z-10 backdrop-blur-[12px] bg-white/35 border border-white/40 flex items-center justify-center gap-3.5 sm:gap-4 md:gap-5 px-5 sm:px-6 md:px-7 py-2 sm:py-2.5 rounded-[22px] md:rounded-[24px] mb-4 md:mb-5 shadow-sm mt-4">
-          {/* Logo UNUD */}
+        <div className="relative z-10 backdrop-blur-[12px] bg-white/35 border border-white/40 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 md:gap-4 px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 rounded-[22px] md:rounded-[24px] mb-4 md:mb-5 shadow-sm mt-4">
+          {/* Tut Wuri */}
           <img
-            src="/logo unud 1.svg"
-            alt="Logo Universitas Udayana"
-            className="h-9 sm:h-9 md:h-10 w-auto object-contain"
-          />
-          {/* Logo Kampus Merdeka */}
-          <img
-            src="/Logo_Kampus_Merdeka_Kemendikbud 3.svg"
-            alt="Logo Kampus Merdeka"
+            src="/logo/Tut Wuri.webp"
+            alt="Logo Tut Wuri"
             className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
-          {/* Logo Dies Natalis */}
+          {/* UNUD */}
           <img
-            src="/logo-dies-hitam.svg"
+            src="/logo/unud.png"
+            alt="Logo UNUD"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
+          />
+          {/* Diktisaintek */}
+          <img
+            src="/logo/diktisaintek.png"
+            alt="Logo Diktisaintek"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
+          />
+          {/* PTNBH */}
+          <img
+            src="/logo/ptnbh.png"
+            alt="Logo PTNBH"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
+          />
+          {/* Dies */}
+          <img
+            src="/logo/dies.png"
             alt="Logo Dies Natalis"
             className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
