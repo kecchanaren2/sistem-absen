@@ -132,18 +132,57 @@ export default function AttendanceForm() {
     };
   }, [roleOpen]);
 
-  const getLocation = (): Promise<GeolocationPosition> => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation tidak didukung oleh browser Anda'));
-      } else {
+  const getLocation = async (): Promise<GeolocationPosition> => {
+    if (!navigator.geolocation) {
+      throw new Error('Geolocation tidak didukung oleh browser Anda');
+    }
+
+    const getSinglePosition = (): Promise<GeolocationPosition> => {
+      return new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
           timeout: 10000,
           maximumAge: 0,
         });
-      }
-    });
+      });
+    };
+
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const samples: GeolocationPosition[] = [];
+
+    // GPS Drift Sampling (3x dengan jeda 1 detik)
+    for (let i = 0; i < 3; i++) {
+      const pos = await getSinglePosition();
+      samples.push(pos);
+      if (i < 2) await delay(1000);
+    }
+
+    const [pos1, pos2, pos3] = samples;
+
+    // Kriteria a: Koordinat Statis
+    if (
+      pos1.coords.latitude === pos2.coords.latitude &&
+      pos1.coords.longitude === pos2.coords.longitude &&
+      pos2.coords.latitude === pos3.coords.latitude &&
+      pos2.coords.longitude === pos3.coords.longitude
+    ) {
+      throw new Error('error GPS tidak valid');
+    }
+
+    // Kriteria b: Akurasi Tidak Wajar
+    if (pos3.coords.accuracy <= 1 || pos3.coords.accuracy > 150) {
+      throw new Error('Sinyal GPS tidak valid/tidak akurat');
+    }
+
+    return pos3;
+  };
+
+  const generateSignature = async (latitude: number, longitude: number, timestamp: number): Promise<string> => {
+    const message = `${latitude}|${longitude}|${timestamp}|SECRET_SALT_2026`;
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const selectedSessionStatus = hariAbsen === 1 ? status1 : status2;
@@ -205,17 +244,20 @@ export default function AttendanceForm() {
       } catch (error: unknown) {
         setLocationStatus('error');
         const errMessage = error instanceof Error ? error.message : '';
-        throw new Error(
-          errMessage === 'User denied Geolocation'
-            ? 'Mohon izinkan akses lokasi untuk melakukan absensi.'
-            : 'Gagal mendapatkan lokasi. Pastikan GPS aktif.'
-        );
+        if (errMessage.toLowerCase().includes('denied') || errMessage.toLowerCase().includes('permission')) {
+          throw new Error('Mohon izinkan akses lokasi untuk melakukan absensi.');
+        }
+        throw new Error(errMessage || 'Gagal mendapatkan lokasi. Pastikan GPS aktif.');
       }
 
       // 2. Get Local Token
       const localToken = localStorage.getItem('absen_local_token') || '';
 
-      // 3. Submit to API
+      // 3. Generate Anti-Burp Signature
+      const timestamp = Date.now();
+      const signature = await generateSignature(position.coords.latitude, position.coords.longitude, timestamp);
+
+      // 4. Submit to API
       const response = await fetch('/api/attendance', {
         method: 'POST',
         headers: {
@@ -231,6 +273,8 @@ export default function AttendanceForm() {
           local_token: localToken,
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          timestamp,
+          signature,
         }),
       });
 

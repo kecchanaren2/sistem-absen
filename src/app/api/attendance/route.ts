@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getDistanceInMeters, EVENT_LATITUDE, EVENT_LONGITUDE, MAX_DISTANCE_METERS } from '@/lib/haversine';
 import { getSessionStatus, SESSION_SCHEDULES } from '@/lib/schedule';
 import { v4 as uuidv4 } from 'uuid';
-
+import crypto from 'crypto';
 // ============================================
 // RATE LIMITING (Simple In-Memory Store)
 // ============================================
@@ -50,7 +50,7 @@ function isValidParticipantName(name: string): boolean {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude } = body;
+    const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude, timestamp, signature } = body;
 
     // Check rate limit (Kombinasi 2 Lapis: IP dan Visitor ID)
     const ip = getRateLimitKey(req);
@@ -79,6 +79,23 @@ export async function POST(req: Request) {
     // 1. Basic Validation
     if (!email || (!isPanitiaRole && !nama_peserta) || !nim_nip || !Sesi || !visitor_id || !latitude || !longitude) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // 1b. Anti-Replay Attack & Integrity Validation
+    if (!timestamp || !signature) {
+      return NextResponse.json({ error: 'Missing security parameters' }, { status: 400 });
+    }
+
+    const currentServerTime = Date.now();
+    if (Math.abs(currentServerTime - timestamp) > 10000) { // Toleransi 10 detik
+      return NextResponse.json({ error: 'Request kadaluarsa (terindikasi intercept)' }, { status: 403 });
+    }
+
+    const expectedMessage = `${latitude}|${longitude}|${timestamp}|SECRET_SALT_2026`;
+    const expectedSignature = crypto.createHash('sha256').update(expectedMessage).digest('hex');
+
+    if (signature !== expectedSignature) {
+      return NextResponse.json({ error: 'Data request dimanipulasi!' }, { status: 403 });
     }
 
     if (!isPanitiaRole && !isValidParticipantName(String(nama_peserta))) {
