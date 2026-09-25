@@ -200,12 +200,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // 3. Anti-Cheat Validations (DIPANGKAS!)
-    // Semua pengecekan manual (email, visitor_id, local_token) telah DIHAPUS.
-    // Tugas pengecekan ini sekarang 100% diserahkan ke fitur UNIQUE INDEX di Supabase.
-    // Jika ada data duplikat, Supabase akan menolak INSERT dengan error kode 23505,
-    // yang sudah kita tangkap di bagian bawah kodingan ini.
-    // Hal ini memangkas jumlah request ke Supabase dari 4x menjadi 1x saja!
+    // 3. Anti-Cheat Validations are handled by Supabase UNIQUE INDEX constraint.
 
     // 4. Generate new token if not provided
     const newToken = local_token || uuidv4();

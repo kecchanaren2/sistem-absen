@@ -2,15 +2,12 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
   // Tentukan file template berdasarkan role
   const isPanitia = role && role.toLowerCase().includes('panitia');
   
-  // Panitia mendapat 2 sertifikat:
-  //   Lembar 1 = Sertifikat sebagai Panitia
-  //   Lembar 2 = Sertifikat sebagai Peserta (karena panitia juga ikut sebagai peserta)
-  // Peserta biasa hanya mendapat 1 sertifikat peserta
+  // Panitia mendapat 2 sertifikat, peserta biasa 1 sertifikat
   const templates = isPanitia 
     ? ['/sertifikat-panitia.jpeg', '/sertifikat-peserta.jpeg'] 
     : ['/sertifikat-peserta.jpeg'];
 
-  // Loop untuk mencetak semua sertifikat yang ada di dalam array
+
   for (let i = 0; i < templates.length; i++) {
     const imageUrl = templates[i];
 
@@ -59,7 +56,7 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
           const a = document.createElement('a');
           a.href = dataUrl;
           
-          // Beri nama file yang berbeda jika ada lebih dari 1 sertifikat
+
           const fileName = templates.length > 1 
             ? `Sertifikat - ${capitalizedName} - Lembar ${i + 1}.png` 
             : `Sertifikat - ${capitalizedName}.png`;
@@ -82,7 +79,7 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
       img.src = imageUrl;
     });
 
-    // Beri jeda 500ms antar download agar browser tidak mengira ini spam download dan memblokirnya
+    // Jeda 500ms antar download
     if (i < templates.length - 1) {
       await new Promise(r => setTimeout(r, 500));
     }
