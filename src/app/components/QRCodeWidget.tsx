@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { QRGenerator } from '@/lib/qr-generator';
@@ -51,14 +51,14 @@ export default function QRCodeWidget({
         colorDark,
         colorLight:       '#ffffff',
         qrSize:           512,
-        logoBgSize:       220, // Diperbesar sesuai request (sebelumnya 160, asli 220)
+        logoBgSize:       220,
         downloadFilename,
       });
 
       await qr.render();
       qrRef.current = qr;
       
-      // Simpan data URL agar bisa ditampilkan di tag img pada modal (biar rapi)
+
       setQrDataUrl(canvasRef.current.toDataURL('image/png'));
       setReady(true);
     } catch (err) {

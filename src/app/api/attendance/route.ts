@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getDistanceInMeters, EVENT_LATITUDE, EVENT_LONGITUDE, MAX_DISTANCE_METERS } from '@/lib/haversine';
 import { getSessionStatus, SESSION_SCHEDULES } from '@/lib/schedule';
 import { v4 as uuidv4 } from 'uuid';
-
+import crypto from 'crypto';
 // ============================================
 // RATE LIMITING (Simple In-Memory Store)
 // ============================================
@@ -50,7 +50,7 @@ function isValidParticipantName(name: string): boolean {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude } = body;
+    const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude, accuracy, timestamp, signature } = body;
 
     // Check rate limit (Kombinasi 2 Lapis: IP dan Visitor ID)
     const ip = getRateLimitKey(req);
@@ -77,8 +77,34 @@ export async function POST(req: Request) {
     const isPanitiaRole = role === 'panitia_mahasiswa' || role === 'panitia_dosen';
 
     // 1. Basic Validation
-    if (!email || (!isPanitiaRole && !nama_peserta) || !nim_nip || !Sesi || !visitor_id || !latitude || !longitude) {
+    if (!email || (!isPanitiaRole && !nama_peserta) || !nim_nip || !Sesi || !visitor_id || latitude === undefined || longitude === undefined || accuracy === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // 1b. Anti-Replay Attack & Integrity Validation
+    if (!timestamp || !signature) {
+      return NextResponse.json({ error: 'Missing security parameters' }, { status: 400 });
+    }
+
+    const currentServerTime = Date.now();
+    if (Math.abs(currentServerTime - timestamp) > 10000) { // Toleransi 10 detik
+      return NextResponse.json({ error: 'Request kadaluarsa (terindikasi intercept)' }, { status: 403 });
+    }
+
+    const expectedMessage = `${latitude}|${longitude}|${accuracy}|${timestamp}|SECRET_SALT_2026`;
+    const expectedSignature = crypto.createHash('sha256').update(expectedMessage).digest('hex');
+
+    if (signature !== expectedSignature) {
+      return NextResponse.json({ error: 'Data request dimanipulasi!' }, { status: 403 });
+    }
+
+    // Validation Fake GPS / Mock Location (< 1m accuracy) & Weak Accuracy (> 150m accuracy)
+    const accuracyNumber = Number(accuracy);
+    if (!Number.isFinite(accuracyNumber) || accuracyNumber < 1.0) {
+      return NextResponse.json({ error: 'Terdeteksi lokasi tidak valid (Fake GPS / Mock Location). Harap gunakan GPS asli perangkat.' }, { status: 400 });
+    }
+    if (accuracyNumber > 150) {
+      return NextResponse.json({ error: `Sinyal GPS kurang akurat (${Math.round(accuracyNumber)}m). Harap aktifkan High Accuracy GPS.` }, { status: 400 });
     }
 
     if (!isPanitiaRole && !isValidParticipantName(String(nama_peserta))) {
@@ -119,8 +145,8 @@ export async function POST(req: Request) {
     const cleanNimNip = String(nim_nip).trim();
     const isDosenRole = role === 'panitia_dosen' || role === 'peserta_dosen' || role === 'peserta_tendik';
     if (isDosenRole) {
-      if (!/^\d{18}$/.test(cleanNimNip)) {
-        return NextResponse.json({ error: 'NIP harus berupa 18 digit angka.' }, { status: 400 });
+      if (!/^\d{19}$/.test(cleanNimNip)) {
+        return NextResponse.json({ error: 'NIP harus berupa 19 digit angka.' }, { status: 400 });
       }
     } else {
       // Mahasiswa / Panitia Mahasiswa / Peserta Mahasiswa
@@ -200,12 +226,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // 3. Anti-Cheat Validations (DIPANGKAS!)
-    // Semua pengecekan manual (email, visitor_id, local_token) telah DIHAPUS.
-    // Tugas pengecekan ini sekarang 100% diserahkan ke fitur UNIQUE INDEX di Supabase.
-    // Jika ada data duplikat, Supabase akan menolak INSERT dengan error kode 23505,
-    // yang sudah kita tangkap di bagian bawah kodingan ini.
-    // Hal ini memangkas jumlah request ke Supabase dari 4x menjadi 1x saja!
+    // 3. Anti-Cheat Validations are handled by Supabase UNIQUE INDEX constraint.
 
     // 4. Generate new token if not provided
     const newToken = local_token || uuidv4();

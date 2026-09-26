@@ -47,7 +47,7 @@ export default function CertificateForm() {
     const cleanNimNip = nimNip.trim();
 
     if (!cleanNimNip) {
-      setMessage({ text: 'NIM/NIP wajib diisi.', type: 'error' });
+      setMessage({ text: 'NIP wajib diisi.', type: 'error' });
       setIsLoading(false);
       return;
     }
@@ -134,22 +134,34 @@ export default function CertificateForm() {
         </button>
 
         {/* Frosted Logo Banner Capsule */}
-        <div className="relative z-10 backdrop-blur-[12px] bg-white/35 border border-white/40 flex items-center justify-center gap-3.5 sm:gap-4 md:gap-5 px-5 sm:px-6 md:px-7 py-2 sm:py-2.5 rounded-[22px] md:rounded-[24px] mb-4 md:mb-5 shadow-sm mt-4">
-          {/* Logo UNUD */}
+        <div className="relative z-10 backdrop-blur-[12px] bg-white/35 border border-white/40 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 md:gap-4 px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 rounded-[22px] md:rounded-[24px] mb-4 md:mb-5 shadow-sm mt-4">
+          {/* Tut Wuri */}
           <img
-            src="/logo unud 1.svg"
-            alt="Logo Universitas Udayana"
-            className="h-9 sm:h-9 md:h-10 w-auto object-contain"
-          />
-          {/* Logo Kampus Merdeka */}
-          <img
-            src="/Logo_Kampus_Merdeka_Kemendikbud 3.svg"
-            alt="Logo Kampus Merdeka"
+            src="/logo/Tut Wuri.webp"
+            alt="Logo Tut Wuri"
             className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
-          {/* Logo Dies Natalis */}
+          {/* UNUD */}
           <img
-            src="/logo-dies-hitam.svg"
+            src="/logo/unud.png"
+            alt="Logo UNUD"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
+          />
+          {/* Diktisaintek */}
+          <img
+            src="/logo/diktisaintek.png"
+            alt="Logo Diktisaintek"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
+          />
+          {/* PTNBH */}
+          <img
+            src="/logo/ptnbh.png"
+            alt="Logo PTNBH"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
+          />
+          {/* Dies */}
+          <img
+            src="/logo/dies.png"
             alt="Logo Dies Natalis"
             className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
@@ -166,10 +178,10 @@ export default function CertificateForm() {
 
         <div>
           <h3 className="text-[17px] font-bold text-[#2c1e18] dark:text-[#f5ece7] mb-1.5">
-            Masukkan Identitas Presensi Anda
+            Masukkan NIM/NIP Anda
           </h3>
           <p className="text-sm text-[#7e695d] dark:text-[#a39086] leading-relaxed">
-            Gunakan <strong className="font-semibold text-[#5a4439] dark:text-[#c9b8ae]">NIM</strong> (untuk Mahasiswa) atau <strong className="font-semibold text-[#5a4439] dark:text-[#c9b8ae]">NIP</strong> (untuk Dosen/Tendik/Umum) yang Anda input saat mengisi formulir presensi kegiatan.
+            Gunakan <strong className="font-semibold text-[#5a4439] dark:text-[#c9b8ae]">NIM/NIP</strong> yang Anda input saat mengisi formulir presensi kegiatan.
           </p>
         </div>
 
@@ -216,7 +228,7 @@ export default function CertificateForm() {
         {/* Main Form */}
         <form onSubmit={handleSubmit} className="flex flex-col space-y-6">
 
-          {/* NIM / NIP Input */}
+          {/* NIP Input */}
           <div className="flex flex-col space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
               NIM/NIP
@@ -225,8 +237,10 @@ export default function CertificateForm() {
               type="text"
               required
               value={nimNip}
+              maxLength={19}
               onChange={(e) => {
-                setNimNip(e.target.value.replace(/\D/g, ''));
+                const numericValue = e.target.value.replace(/\D/g, '').slice(0, 19);
+                setNimNip(numericValue);
               }}
               className="w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-[#decbc0] dark:border-[#4f382c] focus:ring-2 focus:ring-[#04b077] focus:border-[#04b077] bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] transition-all shadow-xs touch-manipulation font-mono tracking-wider"
               placeholder="Misal: 123456789"

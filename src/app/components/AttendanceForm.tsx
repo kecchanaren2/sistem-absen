@@ -131,18 +131,41 @@ export default function AttendanceForm() {
     };
   }, [roleOpen]);
 
-  const getLocation = (): Promise<GeolocationPosition> => {
+  const getLocation = async (): Promise<GeolocationPosition> => {
+    if (!navigator.geolocation) {
+      throw new Error('Geolocation tidak didukung oleh browser Anda');
+    }
+
     return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation tidak didukung oleh browser Anda'));
-      } else {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const acc = position.coords.accuracy;
+          // Deteksi Fake GPS / Mock Location (akurasi 0m / < 1m)
+          if (acc < 1.0) {
+            return reject(new Error('Terdeteksi lokasi tidak valid (Fake GPS / Mock Location). Harap gunakan GPS asli perangkat Anda.'));
+          }
+          // Deteksi Sinyal GPS Terlalu Lemah / Kurang Akurat (> 150m)
+          if (acc > 150) {
+            return reject(new Error(`Sinyal GPS kurang akurat (akurasi ${Math.round(acc)} meter). Harap aktifkan Mode Akurasi Tinggi pada GPS HP Anda.`));
+          }
+          resolve(position);
+        },
+        (error) => reject(error),
+        {
           enableHighAccuracy: true,
           timeout: 10000,
           maximumAge: 0,
-        });
-      }
+        }
+      );
     });
+  };
+
+  const generateSignature = async (latitude: number, longitude: number, accuracy: number, timestamp: number): Promise<string> => {
+    const message = `${latitude}|${longitude}|${accuracy}|${timestamp}|SECRET_SALT_2026`;
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const selectedSessionStatus = hariAbsen === 1 ? status1 : status2;
@@ -153,9 +176,18 @@ export default function AttendanceForm() {
     // Validation for NIM / NIP format
     const cleanNimNip = nimNip.trim();
     const isDosenRole = role === 'panitia_dosen' || role === 'peserta_dosen' || role === 'peserta_tendik';
+
+    if (!cleanNimNip) {
+      setMessage({
+        text: isDosenRole ? 'NIP tidak boleh kosong.' : 'NIM tidak boleh kosong.',
+        type: 'error',
+      });
+      return;
+    }
+
     if (isDosenRole) {
-      if (!/^\d{18}$/.test(cleanNimNip)) {
-        setMessage({ text: 'NIP harus berupa 18 digit angka.', type: 'error' });
+      if (!/^\d{19}$/.test(cleanNimNip)) {
+        setMessage({ text: 'NIP harus berupa 19 digit angka.', type: 'error' });
         return;
       }
     } else {
@@ -195,17 +227,21 @@ export default function AttendanceForm() {
       } catch (error: unknown) {
         setLocationStatus('error');
         const errMessage = error instanceof Error ? error.message : '';
-        throw new Error(
-          errMessage === 'User denied Geolocation'
-            ? 'Mohon izinkan akses lokasi untuk melakukan absensi.'
-            : 'Gagal mendapatkan lokasi. Pastikan GPS aktif.'
-        );
+        if (errMessage.toLowerCase().includes('denied') || errMessage.toLowerCase().includes('permission')) {
+          throw new Error('Mohon izinkan akses lokasi untuk melakukan absensi.');
+        }
+        throw new Error(errMessage || 'Gagal mendapatkan lokasi. Pastikan GPS aktif.');
       }
 
       // 2. Get Local Token
       const localToken = localStorage.getItem('absen_local_token') || '';
 
-      // 3. Submit to API
+      // 3. Generate Anti-Burp Signature
+      const timestamp = Date.now();
+      const accuracy = position.coords.accuracy;
+      const signature = await generateSignature(position.coords.latitude, position.coords.longitude, accuracy, timestamp);
+
+      // 4. Submit to API
       const response = await fetch('/api/attendance', {
         method: 'POST',
         headers: {
@@ -221,6 +257,9 @@ export default function AttendanceForm() {
           local_token: localToken,
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          accuracy,
+          timestamp,
+          signature,
         }),
       });
 
@@ -319,21 +358,33 @@ export default function AttendanceForm() {
 
         {/* Frosted Logo Banner Capsule */}
         <div className="relative z-10 backdrop-blur-[12px] bg-white/35 border border-white/40 flex items-center justify-center gap-3.5 sm:gap-4 md:gap-5 px-5 sm:px-6 md:px-7 py-2 sm:py-2.5 rounded-[22px] md:rounded-[24px] mb-4 md:mb-5 shadow-sm">
-          {/* Logo UNUD */}
+          {/* Tut Wuri */}
           <img
-            src="/logo unud 1.svg"
-            alt="Logo Universitas Udayana"
-            className="h-9 sm:h-9 md:h-10 w-auto object-contain"
-          />
-          {/* Logo Kampus Merdeka */}
-          <img
-            src="/Logo_Kampus_Merdeka_Kemendikbud 3.svg"
-            alt="Logo Kampus Merdeka"
+            src="/logo/Tut Wuri.webp"
+            alt="Logo Tut Wuri"
             className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
-          {/* Logo Dies Natalis */}
+          {/* UNUD */}
           <img
-            src="/logo-dies-hitam.svg"
+            src="/logo/unud.png"
+            alt="Logo UNUD"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
+          />
+          {/* Diktisaintek */}
+          <img
+            src="/logo/diktisaintek.png"
+            alt="Logo Diktisaintek"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
+          />
+          {/* PTNBH */}
+          <img
+            src="/logo/ptnbh.png"
+            alt="Logo PTNBH"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
+          />
+          {/* Dies */}
+          <img
+            src="/logo/dies.png"
             alt="Logo Dies Natalis"
             className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
@@ -370,7 +421,7 @@ export default function AttendanceForm() {
               Lokasi GPS
             </span>
             <span className="text-[11px] text-[#8c776c] dark:text-[#a8968c] font-medium">
-              {locationStatus === 'success' ? 'Terverifikasi âœ“' : locationStatus === 'error' ? 'Gagal âœ—' : 'Siap'}
+              {locationStatus === 'success' ? 'Terverifikasi ✓' : locationStatus === 'error' ? 'Gagal ✗' : 'Siap'}
             </span>
           </div>
 
@@ -387,7 +438,7 @@ export default function AttendanceForm() {
               Perangkat
             </span>
             <span className="text-[11px] text-[#8c776c] dark:text-[#a8968c] font-medium">
-              {fpStatus === 'success' ? 'Terverifikasi âœ“' : fpStatus === 'error' ? 'Gagal âœ—' : 'Memeriksa...'}
+              {fpStatus === 'success' ? 'Terverifikasi ✓' : fpStatus === 'error' ? 'Gagal ✗' : 'Memeriksa...'}
             </span>
           </div>
         </div>
@@ -433,7 +484,7 @@ export default function AttendanceForm() {
 
         {/* Main Attendance Form */}
         <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
-          {/* Status / Peran â€” Custom Dropdown */}
+          {/* Status / Peran — Custom Dropdown */}
           <div className="flex flex-col space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
               STATUS / PERAN
@@ -570,13 +621,13 @@ export default function AttendanceForm() {
             <input
               type="text"
               required
-              maxLength={isDosenRole ? 18 : 10}
+              maxLength={isDosenRole ? 19 : 10}
               value={nimNip}
               onChange={(e) => {
                 setNimNip(e.target.value.replace(/\D/g, ''));
               }}
               className="w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-[#decbc0] dark:border-[#4f382c] focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] transition-all shadow-xs touch-manipulation font-mono tracking-wider"
-              placeholder={isDosenRole ? 'Misal: 198110072008121000' : 'Misal: 1234567890'}
+              placeholder={isDosenRole ? 'Misal: 1981100720081210001' : 'Misal: 1234567890'}
               autoComplete="off"
             />
           </div>

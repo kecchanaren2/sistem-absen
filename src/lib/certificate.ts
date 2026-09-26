@@ -1,31 +1,16 @@
 export async function generateAndDownloadCertificate(namaPeserta: string, role: string) {
-  // Peta template sertifikat berdasarkan role:
-  //
-  // panitia_dosen    → 2 sertifikat: sebagai Panitia Dosen + sebagai Peserta Dosen
-  // panitia_mahasiswa → 2 sertifikat: sebagai Panitia Mahasiswa + sebagai Peserta Mahasiswa
-  // peserta_dosen    → 1 sertifikat: sebagai Peserta Dosen
-  // peserta_tendik   → 1 sertifikat: sebagai Peserta Dosen (template sama)
-  // peserta_mahasiswa → 1 sertifikat: sebagai Peserta Mahasiswa
-  let templates: string[];
+  // Tentukan file template berdasarkan role
+  const isPanitia = role && role.toLowerCase().includes('panitia');
+  
+  // Panitia mendapat 2 sertifikat:
+  //   Lembar 1 = Sertifikat sebagai Panitia
+  //   Lembar 2 = Sertifikat sebagai Peserta (karena panitia juga ikut sebagai peserta)
+  // Peserta biasa hanya mendapat 1 sertifikat peserta
+  const templates = isPanitia 
+    ? ['/sertifikat-panitia.jpeg', '/sertifikat-peserta.jpeg'] 
+    : ['/sertifikat-peserta.jpeg'];
 
-  switch (role) {
-    case 'panitia_dosen':
-      templates = ['/sertifikat-panitia-dosen.png', '/sertifikat-peserta-dosen.png'];
-      break;
-    case 'panitia_mahasiswa':
-      templates = ['/sertifikat-panitia.png', '/sertifikat-peserta.png'];
-      break;
-    case 'peserta_dosen':
-    case 'peserta_tendik':
-      templates = ['/sertifikat-peserta-dosen.png'];
-      break;
-    case 'peserta_mahasiswa':
-    default:
-      templates = ['/sertifikat-peserta.png'];
-      break;
-  }
 
-  // Loop untuk mencetak semua sertifikat yang ada di dalam array
   for (let i = 0; i < templates.length; i++) {
     const imageUrl = templates[i];
 
@@ -74,7 +59,7 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
           const a = document.createElement('a');
           a.href = dataUrl;
           
-          // Beri nama file yang berbeda jika ada lebih dari 1 sertifikat
+
           const fileName = templates.length > 1 
             ? `Sertifikat - ${capitalizedName} - Lembar ${i + 1}.png` 
             : `Sertifikat - ${capitalizedName}.png`;
@@ -97,7 +82,7 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
       img.src = imageUrl;
     });
 
-    // Beri jeda 500ms antar download agar browser tidak mengira ini spam download dan memblokirnya
+    // Jeda 500ms antar download
     if (i < templates.length - 1) {
       await new Promise(r => setTimeout(r, 500));
     }
