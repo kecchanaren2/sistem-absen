@@ -1,22 +1,37 @@
 export async function generateAndDownloadCertificate(namaPeserta: string, role: string) {
-  // Tentukan file template berdasarkan role
-  const isPanitia = role && role.toLowerCase().includes('panitia');
-  
-  // Panitia mendapat 2 sertifikat:
-  //   Lembar 1 = Sertifikat sebagai Panitia
-  //   Lembar 2 = Sertifikat sebagai Peserta (karena panitia juga ikut sebagai peserta)
-  // Peserta biasa hanya mendapat 1 sertifikat peserta
-  const templates = isPanitia 
-    ? ['/sertifikat-panitia.jpeg', '/sertifikat-peserta.jpeg'] 
-    : ['/sertifikat-peserta.jpeg'];
+  // Peta template sertifikat berdasarkan role:
+  //
+  // panitia_dosen    → 2 sertifikat: sebagai Panitia Dosen + sebagai Peserta Dosen
+  // panitia_mahasiswa → 2 sertifikat: sebagai Panitia Mahasiswa + sebagai Peserta Mahasiswa
+  // peserta_dosen    → 1 sertifikat: sebagai Peserta Dosen
+  // peserta_tendik   → 1 sertifikat: sebagai Peserta Dosen (template sama)
+  // peserta_mahasiswa → 1 sertifikat: sebagai Peserta Mahasiswa
+  let templates: string[];
 
+  switch (role) {
+    case 'panitia_dosen':
+      templates = ['/sertifikat-panitia-dosen.png', '/sertifikat-peserta-dosen.png'];
+      break;
+    case 'panitia_mahasiswa':
+      templates = ['/sertifikat-panitia.png', '/sertifikat-peserta.png'];
+      break;
+    case 'peserta_dosen':
+    case 'peserta_tendik':
+      templates = ['/sertifikat-peserta-dosen.png'];
+      break;
+    case 'peserta_mahasiswa':
+    default:
+      templates = ['/sertifikat-peserta.png'];
+      break;
+  }
 
+  // Loop untuk mencetak semua sertifikat yang ada di dalam array
   for (let i = 0; i < templates.length; i++) {
     const imageUrl = templates[i];
 
     await new Promise<void>((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous'; 
+      img.crossOrigin = 'anonymous';
 
       img.onload = () => {
         try {
@@ -35,7 +50,7 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
           // 2. Tulis teks nama peserta
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#000000'; 
+          ctx.fillStyle = '#000000';
 
           const capitalizedName = namaPeserta.replace(/\b\w/g, l => l.toUpperCase());
           let fontSize = Math.floor(canvas.width * 0.05);
@@ -58,12 +73,12 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
           const dataUrl = canvas.toDataURL('image/png', 1.0);
           const a = document.createElement('a');
           a.href = dataUrl;
-          
 
-          const fileName = templates.length > 1 
-            ? `Sertifikat - ${capitalizedName} - Lembar ${i + 1}.png` 
+          // Beri nama file yang berbeda jika ada lebih dari 1 sertifikat
+          const fileName = templates.length > 1
+            ? `Sertifikat - ${capitalizedName} - Lembar ${i + 1}.png`
             : `Sertifikat - ${capitalizedName}.png`;
-            
+
           a.download = fileName;
           document.body.appendChild(a);
           a.click();
@@ -82,7 +97,7 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
       img.src = imageUrl;
     });
 
-    // Jeda 500ms antar download
+    // Jeda 500ms antar download agar browser tidak memblokir
     if (i < templates.length - 1) {
       await new Promise(r => setTimeout(r, 500));
     }
