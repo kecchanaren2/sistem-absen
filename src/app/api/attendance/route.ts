@@ -150,8 +150,8 @@ export async function POST(req: Request) {
       }
     } else {
       // Mahasiswa / Panitia Mahasiswa / Peserta Mahasiswa
-      if (!/^\d{10}$/.test(cleanNimNip)) {
-        return NextResponse.json({ error: 'NIM harus berupa 10 digit angka.' }, { status: 400 });
+      if (!/^\d{1,14}$/.test(cleanNimNip)) {
+        return NextResponse.json({ error: 'NIM tidak valid (maksimal 14 digit angka).' }, { status: 400 });
       }
     }
 
