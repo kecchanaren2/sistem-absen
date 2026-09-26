@@ -1,14 +1,29 @@
 export async function generateAndDownloadCertificate(namaPeserta: string, role: string) {
-  // Tentukan file template berdasarkan role
-  const isPanitia = role && role.toLowerCase().includes('panitia');
-  
-  // Panitia mendapat 2 sertifikat:
-  //   Lembar 1 = Sertifikat sebagai Panitia
-  //   Lembar 2 = Sertifikat sebagai Peserta (karena panitia juga ikut sebagai peserta)
-  // Peserta biasa hanya mendapat 1 sertifikat peserta
-  const templates = isPanitia 
-    ? ['/sertifikat-panitia.jpeg', '/sertifikat-peserta.jpeg'] 
-    : ['/sertifikat-peserta.jpeg'];
+  // Peta template sertifikat berdasarkan role:
+  //
+  // panitia_dosen    → 2 sertifikat: sebagai Panitia Dosen + sebagai Peserta Dosen
+  // panitia_mahasiswa → 2 sertifikat: sebagai Panitia Mahasiswa + sebagai Peserta Mahasiswa
+  // peserta_dosen    → 1 sertifikat: sebagai Peserta Dosen
+  // peserta_tendik   → 1 sertifikat: sebagai Peserta Dosen (template sama)
+  // peserta_mahasiswa → 1 sertifikat: sebagai Peserta Mahasiswa
+  let templates: string[];
+
+  switch (role) {
+    case 'panitia_dosen':
+      templates = ['/sertifikat-panitia-dosen.png', '/sertifikat-peserta-dosen.png'];
+      break;
+    case 'panitia_mahasiswa':
+      templates = ['/sertifikat-panitia.png', '/sertifikat-peserta.png'];
+      break;
+    case 'peserta_dosen':
+    case 'peserta_tendik':
+      templates = ['/sertifikat-peserta-dosen.png'];
+      break;
+    case 'peserta_mahasiswa':
+    default:
+      templates = ['/sertifikat-peserta.png'];
+      break;
+  }
 
   // Loop untuk mencetak semua sertifikat yang ada di dalam array
   for (let i = 0; i < templates.length; i++) {

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import fpPromise from '@fingerprintjs/fingerprintjs';
@@ -7,13 +7,12 @@ import {
   MapPin,
   Smartphone,
   Loader2,
-  Download,
   CheckCircle,
   AlertCircle,
   Clock,
   Lock,
   UserCheck,
-  ShieldCheck,
+  Award,
   Sun,
   Moon
 } from 'lucide-react';
@@ -249,17 +248,11 @@ export default function AttendanceForm() {
     }
   };
 
-  const handleDownloadCertificate = async () => {
-    if (namaPeserta) {
-      try {
-        const { generateAndDownloadCertificate } = await import('@/lib/certificate');
-        await generateAndDownloadCertificate(namaPeserta, role);
-      } catch (error) {
-        console.error("Gagal membuat sertifikat:", error);
-        alert("Gagal membuat sertifikat pada perangkat ini.");
-      }
-    }
-  };
+  // handleDownloadCertificate SENGAJA DIHAPUS dari halaman ini.
+  // Alasan: fungsi ini menggunakan `role` dari dropdown form, bukan dari database,
+  // sehingga user bisa memanipulasi role untuk mendapatkan template sertifikat yang salah.
+  // Seluruh proses download sertifikat dipindahkan ke Portal Sertifikat (/sertifikat)
+  // yang memverifikasi role langsung dari database (server-side).
 
   const ROLES = [
     { value: 'panitia_mahasiswa', label: 'Panitia Mahasiswa', group: 'Panitia' },
@@ -420,22 +413,21 @@ export default function AttendanceForm() {
         {eligibleForCertificate && (
           <div className="p-5 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-orange-950/40 dark:via-amber-950/40 dark:to-yellow-950/40 rounded-2xl border border-orange-200/80 dark:border-orange-800/60 text-center shadow-md">
             <div className="inline-flex p-2 bg-orange-100 dark:bg-orange-900/60 rounded-full mb-2 text-orange-600 dark:text-orange-300">
-              <ShieldCheck className="w-6 h-6" />
+              <Award className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-[#3d2417] dark:text-orange-100 mb-1">
-              Selamat! Anda Berhak E-Sertifikat ðŸŽ‰
+              Selamat! Anda Berhak E-Sertifikat 🎉
             </h3>
             <p className="text-[#69422f] dark:text-orange-300 text-xs mb-4 leading-relaxed">
-              Seluruh sesi absensi Anda telah tercatat dengan valid.
+              Seluruh sesi absensi Anda telah tercatat. Silakan unduh sertifikat melalui Portal Sertifikat.
             </p>
-            <button
-              type="button"
-              onClick={handleDownloadCertificate}
+            <a
+              href="/sertifikat"
               className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 active:scale-[0.98] text-white py-3.5 px-4 rounded-xl font-bold transition-all shadow-md shadow-orange-500/20 touch-manipulation"
             >
-              <Download className="w-4 h-4" />
-              <span>Unduh Sertifikat</span>
-            </button>
+              <Award className="w-4 h-4" />
+              <span>Buka Portal Sertifikat</span>
+            </a>
           </div>
         )}
 
