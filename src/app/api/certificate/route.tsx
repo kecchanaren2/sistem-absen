@@ -1,9 +1,14 @@
 import { ImageResponse } from '@vercel/og';
+import { isCertificateOpen } from '@/lib/certificate-access';
 
 export const runtime = 'edge';
 
 export async function GET(request: Request) {
   try {
+    if (!isCertificateOpen()) {
+      return new Response('Certificate portal is not open yet', { status: 423 });
+    }
+
     const { searchParams } = new URL(request.url);
     const nama = searchParams.get('nama_peserta');
 

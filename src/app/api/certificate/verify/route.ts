@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { isCertificateOpen } from '@/lib/certificate-access';
 
 // ============================================
 // RATE LIMITING (Simple In-Memory Store)
@@ -38,6 +39,13 @@ function checkRateLimit(key: string, maxLimit: number): boolean {
 
 export async function POST(req: Request) {
   try {
+    if (!isCertificateOpen()) {
+      return NextResponse.json(
+        { error: 'Portal sertifikat belum dibuka.' },
+        { status: 423 }
+      );
+    }
+
     const body = await req.json();
     const { nim_nip, visitor_id } = body;
 
