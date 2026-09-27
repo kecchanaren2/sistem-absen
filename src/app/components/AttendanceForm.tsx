@@ -621,7 +621,7 @@ export default function AttendanceForm() {
             <input
               type="text"
               required
-              maxLength={isDosenRole ? 19 : 14}
+              maxLength={isDosenRole ? 24 : 14}
               value={nimNip}
               onChange={(e) => {
                 setNimNip(e.target.value.replace(/\D/g, ''));

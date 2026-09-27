@@ -237,9 +237,9 @@ export default function CertificateForm() {
               type="text"
               required
               value={nimNip}
-              maxLength={19}
+              maxLength={24}
               onChange={(e) => {
-                const numericValue = e.target.value.replace(/\D/g, '').slice(0, 19);
+                const numericValue = e.target.value.replace(/\D/g, '').slice(0, 24);
                 setNimNip(numericValue);
               }}
               className="w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-[#decbc0] dark:border-[#4f382c] focus:ring-2 focus:ring-[#04b077] focus:border-[#04b077] bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] transition-all shadow-xs touch-manipulation font-mono tracking-wider"

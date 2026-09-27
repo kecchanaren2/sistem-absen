@@ -10,18 +10,18 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
 
   switch (role) {
     case 'panitia_dosen':
-      templates = ['/sertifikat-panitia-dosen.png', '/sertifikat-peserta-dosen.png'];
+      templates = ['/Panitia_Acara_Dosen.png', '/Peserta_Acara_Dosen.png', '/Peserta_Pengabdian.png'];
       break;
     case 'panitia_mahasiswa':
-      templates = ['/sertifikat-panitia.png', '/sertifikat-peserta.png'];
+      templates = ['/Panitia_Acara.png', '/Peserta_Acara.png', '/Peserta_Pengabdian.png'];
       break;
     case 'peserta_dosen':
     case 'peserta_tendik':
-      templates = ['/sertifikat-peserta-dosen.png'];
+      templates = ['/Peserta_Acara_Dosen.png'];
       break;
     case 'peserta_mahasiswa':
     default:
-      templates = ['/sertifikat-peserta.png'];
+      templates = ['/Peserta_Acara.png'];
       break;
   }
 

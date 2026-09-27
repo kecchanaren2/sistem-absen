@@ -4,6 +4,10 @@ export const CERTIFICATE_OPENS_AT =
   process.env.CERTIFICATE_OPENS_AT ?? DEFAULT_CERTIFICATE_OPENS_AT;
 
 export function isCertificateOpen(now = Date.now()): boolean {
+  if (process.env.BYPASS_CERTIFICATE_OPEN === 'true') {
+    return true;
+  }
+
   const opensAt = Date.parse(CERTIFICATE_OPENS_AT);
 
   if (Number.isNaN(opensAt)) {
