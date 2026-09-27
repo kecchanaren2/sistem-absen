@@ -51,7 +51,7 @@ export default function QRCodeWidget({
         colorDark,
         colorLight:       '#ffffff',
         qrSize:           512,
-        logoBgSize:       150,
+        logoBgSize:       128,
         downloadFilename,
       });
 
