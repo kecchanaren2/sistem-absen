@@ -186,13 +186,13 @@ export default function AttendanceForm() {
     }
 
     if (isDosenRole) {
-      if (!/^\d{19}$/.test(cleanNimNip)) {
-        setMessage({ text: 'NIP harus berupa 19 digit angka.', type: 'error' });
+      if (!/^\d{1,24}$/.test(cleanNimNip)) {
+        setMessage({ text: 'NIP harus berupa angka maksimal 24 digit.', type: 'error' });
         return;
       }
     } else {
-      if (!/^\d{10}$/.test(cleanNimNip)) {
-        setMessage({ text: 'NIM harus berupa 10 digit angka.', type: 'error' });
+      if (!/^\d{1,14}$/.test(cleanNimNip)) {
+        setMessage({ text: 'NIM harus berupa angka maksimal 14 digit.', type: 'error' });
         return;
       }
     }
