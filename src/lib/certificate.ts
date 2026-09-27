@@ -53,11 +53,12 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
           ctx.fillStyle = '#000000';
 
           const capitalizedName = namaPeserta.replace(/\b\w/g, l => l.toUpperCase());
-          let fontSize = Math.floor(canvas.width * 0.05);
+          const isPengabdianCertificate = imageUrl === '/Peserta_Pengabdian.png';
+          let fontSize = Math.floor(canvas.width * (isPengabdianCertificate ? 0.035 : 0.05));
           ctx.font = `bold ${fontSize}px "Times New Roman", Times, serif`;
 
           let textWidth = ctx.measureText(capitalizedName).width;
-          const maxTextWidth = canvas.width * 0.7;
+          const maxTextWidth = canvas.width * (isPengabdianCertificate ? 0.6 : 0.7);
 
           while (textWidth > maxTextWidth && fontSize > 10) {
             fontSize -= 2;
@@ -66,7 +67,7 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
           }
 
           const xPos = canvas.width / 2;
-          const yPos = canvas.height * 0.31;
+          const yPos = canvas.height * (isPengabdianCertificate ? 0.30 : 0.31);
           ctx.fillText(capitalizedName, xPos, yPos);
 
           // 3. Download PNG
