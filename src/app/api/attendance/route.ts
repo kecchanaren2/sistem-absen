@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     }
 
     const currentServerTime = Date.now();
-    if (Math.abs(currentServerTime - timestamp) > 10000) { // Toleransi 10 detik
+    if (Math.abs(currentServerTime - timestamp) > 60000) { // Toleransi 60 detik (akomodasi network latency & drift jam HP)
       return NextResponse.json({ error: 'Request kadaluarsa (terindikasi intercept)' }, { status: 403 });
     }
 

@@ -44,12 +44,24 @@ export default function AttendanceForm() {
 
   const [visitorId, setVisitorId] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [gpsProgressText, setGpsProgressText] = useState<string>('');
+  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
 
   // Schedules state
   const [status1, setStatus1] = useState<SessionStatus>(() => getSessionStatus(1));
   const [status2, setStatus2] = useState<SessionStatus>(() => getSessionStatus(2));
 
   const isPanitiaRole = role === 'panitia_mahasiswa' || role === 'panitia_dosen';
+
+  // Detect iOS In-App Browser (WhatsApp, Instagram, Line, etc.)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const ua = navigator.userAgent || '';
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+      const inApp = isIOS && /FBAN|FBAV|Instagram|Line|WhatsApp|TikTok|Telegram|MicroMessenger/i.test(ua);
+      setIsInAppBrowser(inApp);
+    }
+  }, []);
 
   // Initialize theme
   useEffect(() => {
@@ -99,7 +111,7 @@ export default function AttendanceForm() {
   }, []);
 
   useEffect(() => {
-    // Initialize FingerprintJS
+    // Initialize FingerprintJS with Safari / iOS anti-tracking fallback
     const getFingerprint = async () => {
       try {
         const fp = await fpPromise.load();
@@ -107,8 +119,18 @@ export default function AttendanceForm() {
         setVisitorId(result.visitorId);
         setFpStatus('success');
       } catch (error) {
-        console.error('Failed to get fingerprint', error);
-        setFpStatus('error');
+        console.warn('FingerprintJS blocked or failed, using local device identifier fallback:', error);
+        try {
+          let fallbackId = localStorage.getItem('absen_visitor_fallback');
+          if (!fallbackId) {
+            fallbackId = 'device_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36));
+            localStorage.setItem('absen_visitor_fallback', fallbackId);
+          }
+          setVisitorId(fallbackId);
+          setFpStatus('success');
+        } catch {
+          setFpStatus('error');
+        }
       }
     };
 
@@ -131,33 +153,88 @@ export default function AttendanceForm() {
     };
   }, [roleOpen]);
 
-  const getLocation = async (): Promise<GeolocationPosition> => {
-    if (!navigator.geolocation) {
+  // 3-Attempt Smart GPS Acquisition with 30s Timeout per attempt
+  const getLocationWithRetry = async (
+    onProgress?: (text: string) => void
+  ): Promise<GeolocationPosition> => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
       throw new Error('Geolocation tidak didukung oleh browser Anda');
     }
 
-    return new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const acc = position.coords.accuracy;
-          // Deteksi Fake GPS / Mock Location (akurasi 0m / < 1m)
-          if (acc < 1.0) {
-            return reject(new Error('Terdeteksi lokasi tidak valid (Fake GPS / Mock Location). Harap gunakan GPS asli perangkat Anda.'));
+    const MAX_ATTEMPTS = 3;
+    const TIMEOUT_MS = 30000; // 30 detik untuk setiap percobaan
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      if (attempt === 1) {
+        onProgress?.('Mengecek GPS (Percobaan 1/3)...');
+      } else if (attempt === 2) {
+        onProgress?.('Mengoptimalkan GPS (Percobaan 2/3)...');
+      } else {
+        onProgress?.('Menyesuaikan Lokasi (Percobaan 3/3)...');
+      }
+
+      try {
+        const isFallback = attempt === MAX_ATTEMPTS;
+
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const acc = pos.coords.accuracy;
+              // Deteksi Fake GPS / Mock Location (akurasi 0m / < 1m)
+              if (acc < 1.0) {
+                return reject(new Error('Terdeteksi lokasi tidak valid (Fake GPS / Mock Location). Harap gunakan GPS asli perangkat Anda.'));
+              }
+              // Deteksi Sinyal GPS Terlalu Lemah / Kurang Akurat (> 150m)
+              if (acc > 150) {
+                return reject(new Error(`Sinyal GPS kurang akurat (${Math.round(acc)} meter). Harap aktifkan Mode Akurasi Tinggi.`));
+              }
+              resolve(pos);
+            },
+            (err) => reject(err),
+            {
+              enableHighAccuracy: !isFallback, // Percobaan 1 & 2 High Accuracy, Percobaan 3 Fallback
+              timeout: TIMEOUT_MS,             // 30 detik timeout setiap percobaan
+              maximumAge: isFallback ? 30000 : 0, // Fallback dapat menggunakan cache 30 detik
+            }
+          );
+        });
+
+        return position;
+      } catch (err: unknown) {
+        const isGeolocationPositionError = typeof err === 'object' && err !== null && 'code' in err;
+        const errCode = isGeolocationPositionError ? (err as GeolocationPositionError).code : null;
+        const errMsg = err instanceof Error ? err.message : String(err);
+
+        // Jika user secara eksplisit menolak izin (code 1 = PERMISSION_DENIED), hentikan loop
+        if (errCode === 1 || errMsg.toLowerCase().includes('denied') || errMsg.toLowerCase().includes('permission')) {
+          const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
+          if (isIOS) {
+            throw new Error('Izin lokasi ditolak. Buka Pengaturan iPhone > Privasi & Keamanan > Layanan Lokasi > Safari, dan aktifkan izin lokasi serta "Lokasi Tepat".');
           }
-          // Deteksi Sinyal GPS Terlalu Lemah / Kurang Akurat (> 150m)
-          if (acc > 150) {
-            return reject(new Error(`Sinyal GPS kurang akurat (akurasi ${Math.round(acc)} meter). Harap aktifkan Mode Akurasi Tinggi pada GPS HP Anda.`));
-          }
-          resolve(position);
-        },
-        (error) => reject(error),
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
+          throw new Error('Mohon izinkan akses lokasi pada browser untuk melakukan absensi.');
         }
-      );
-    });
+
+        // Jika Fake GPS terdeteksi, hentikan loop
+        if (errMsg.includes('Fake GPS')) {
+          throw err;
+        }
+
+        lastError = err instanceof Error ? err : new Error(errMsg || 'Gagal membaca GPS');
+
+        // Jeda 1 detik sebelum percobaan berikutnya untuk stabilisasi chip GPS
+        if (attempt < MAX_ATTEMPTS) {
+          await new Promise((res) => setTimeout(res, 1000));
+        }
+      }
+    }
+
+    const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    let finalMsg = 'Gagal mendapatkan lokasi setelah 3 kali percobaan (timeout 30 detik). Pastikan GPS aktif.';
+    if (isIOS) {
+      finalMsg += ' Pada iPhone, pastikan opsi "Lokasi Tepat" (Precise Location) aktif di Pengaturan > Privasi > Layanan Lokasi > Safari.';
+    }
+    throw lastError || new Error(finalMsg);
   };
 
   const generateSignature = async (latitude: number, longitude: number, accuracy: number, timestamp: number): Promise<string> => {
@@ -218,20 +295,19 @@ export default function AttendanceForm() {
     const cleanNimNip = nimNip.trim();
 
     try {
-      // 1. Get Geolocation
+      // 1. Get Geolocation (3-Pass Smart Retry dengan 30s timeout per attempt)
       let position: GeolocationPosition;
       setLocationStatus('pending');
       try {
-        position = await getLocation();
+        position = await getLocationWithRetry((text) => setGpsProgressText(text));
         setLocationStatus('success');
       } catch (error: unknown) {
         setLocationStatus('error');
         const errMessage = error instanceof Error ? error.message : '';
-        if (errMessage.toLowerCase().includes('denied') || errMessage.toLowerCase().includes('permission')) {
-          throw new Error('Mohon izinkan akses lokasi untuk melakukan absensi.');
-        }
         throw new Error(errMessage || 'Gagal mendapatkan lokasi. Pastikan GPS aktif.');
       }
+
+      setGpsProgressText('Menyimpan Absensi...');
 
       // 2. Get Local Token
       const localToken = localStorage.getItem('absen_local_token') || '';
@@ -284,6 +360,7 @@ export default function AttendanceForm() {
       setMessage({ text: errorMessage, type: 'error' });
     } finally {
       setIsLoading(false);
+      setGpsProgressText('');
     }
   };
 
@@ -442,6 +519,16 @@ export default function AttendanceForm() {
             </span>
           </div>
         </div>
+
+        {/* In-App Browser Warning Banner for iOS */}
+        {isInAppBrowser && (
+          <div className="p-4 rounded-2xl bg-amber-500/15 dark:bg-amber-950/40 border border-amber-500/40 dark:border-amber-700/60 text-amber-900 dark:text-amber-200 text-xs flex items-start space-x-2.5 shadow-xs">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div className="leading-relaxed">
+              <strong className="font-bold">Membuka dari Aplikasi Chat/In-App:</strong> Terdeteksi membuka dari dalam aplikasi (WhatsApp/Instagram/dll). Izin lokasi sering terblokir di iPhone. Jika terjadi kendala izin GPS, silakan ketuk ikon titik tiga (•••) atau tombol bagikan di pojok, lalu pilih <strong className="underline">"Buka di Safari"</strong>.
+            </div>
+          </div>
+        )}
 
         {/* Dynamic Alerts */}
         {message && (
@@ -722,8 +809,8 @@ export default function AttendanceForm() {
           >
             {isLoading ? (
               <>
-                <Loader2 className="animate-spin w-5 h-5 mr-2" />
-                <span>Memproses Absensi...</span>
+                <Loader2 className="animate-spin w-5 h-5 mr-2 flex-shrink-0" />
+                <span className="truncate">{gpsProgressText || 'Memproses Absensi...'}</span>
               </>
             ) : fpStatus !== 'success' ? (
               <span>Menyiapkan Verifikasi...</span>
