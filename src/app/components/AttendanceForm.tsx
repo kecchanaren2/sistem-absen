@@ -162,6 +162,8 @@ export default function AttendanceForm() {
     role?: string;
     hasPagi?: boolean;
     hasSiang?: boolean;
+    pagiWaktu?: string;
+    siangWaktu?: string;
     eligibleForCertificate?: boolean;
     message?: string;
   } | null>(null);
@@ -642,12 +644,16 @@ export default function AttendanceForm() {
           const hasSiang = sesiText === 'Siang' ? true : localSiang;
           const isEligible = !!data.eligibleForCertificate || (hasPagi && hasSiang);
 
+          // Retrieve existing local record before saving to preserve the original attendance timestamp
+          const existingLocal = getLocalAttendanceRecord(hariAbsen);
+          const recordedTime = data.waktu || existingLocal?.waktu || currentTimeFormatted;
+
           // Simpan riwayat perangkat lokal (Dual-layer: LocalStorage + Cookie)
           const hist: AttendanceRecord = {
             nama: finalName,
             nimNip: cleanNimNip,
             sesi: sesiText,
-            waktu: currentTimeFormatted,
+            waktu: recordedTime,
             role: resolvedRole,
           };
           saveLocalAttendanceRecord(hariAbsen, hist);
@@ -656,7 +662,7 @@ export default function AttendanceForm() {
               nama: finalName,
               nimNip: cleanNimNip,
               sesi: 'Pagi',
-              waktu: 'Selesai Pagi Hari Ini ✓',
+              waktu: getLocalAttendanceRecord(1)?.waktu || 'Terverifikasi di Database',
               role: resolvedRole,
             });
           }
@@ -671,7 +677,7 @@ export default function AttendanceForm() {
             nama: finalName,
             nimNip: cleanNimNip,
             sesi: sesiText,
-            waktu: 'Telah Diverifikasi di Database',
+            waktu: recordedTime,
             role: resolvedRole,
             roleLabel: resolvedRoleLabel,
             isEligible: isEligible,
@@ -1436,7 +1442,7 @@ export default function AttendanceForm() {
                     }`}>
                     <div>
                       <div className="text-[10px] font-bold uppercase tracking-wider opacity-75">Sesi 1 (Pagi)</div>
-                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">{SESSION_SCHEDULES[1].startTime} - {SESSION_SCHEDULES[1].endTime} WITA</div>
+                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">{SESSION_SCHEDULES[1].startTime} - {SESSION_SCHEDULES[1].endTime}</div>
                     </div>
                     <div className="mt-2 pt-2 border-t border-emerald-500/20 text-xs font-bold">
                       {(successModalData?.sesi === 'Pagi' || successModalData?.hasPagi || successModalData?.isEligible) ? (
@@ -1462,7 +1468,7 @@ export default function AttendanceForm() {
                     }`}>
                     <div>
                       <div className="text-[10px] font-bold uppercase tracking-wider opacity-75">Sesi 2 (Siang)</div>
-                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">{SESSION_SCHEDULES[2].startTime} - {SESSION_SCHEDULES[2].endTime} WITA</div>
+                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">{SESSION_SCHEDULES[2].startTime} - {SESSION_SCHEDULES[2].endTime}</div>
                     </div>
                     <div className="mt-2 pt-2 border-t border-amber-500/30 text-xs font-bold">
                       {(successModalData?.isEligible || (successModalData?.sesi === 'Siang' && successModalData?.hasSiang)) ? (
@@ -1734,6 +1740,11 @@ export default function AttendanceForm() {
                               }`}>
                               {checkResult.hasPagi ? '✓ Sudah Absen' : '⏳ Belum Absen'}
                             </span>
+                            {checkResult.hasPagi && checkResult.pagiWaktu && (
+                              <span className="text-[10px] font-mono text-emerald-700/80 dark:text-emerald-300/80 mt-0.5">
+                                {checkResult.pagiWaktu}
+                              </span>
+                            )}
                           </div>
 
                           <div className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center ${checkResult.hasSiang
@@ -1745,6 +1756,11 @@ export default function AttendanceForm() {
                               }`}>
                               {checkResult.hasSiang ? '✓ Sudah Absen' : '⏳ Belum Absen'}
                             </span>
+                            {checkResult.hasSiang && checkResult.siangWaktu && (
+                              <span className="text-[10px] font-mono text-emerald-700/80 dark:text-emerald-300/80 mt-0.5">
+                                {checkResult.siangWaktu}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -278,16 +278,19 @@ export async function POST(req: Request) {
           }
         }
 
-        // Ambil data existing dari database untuk mendapatkan role dan nama_peserta yang akurat
+        // Ambil data existing dari database untuk mendapatkan role, nama_peserta, dan waktu absensi yang akurat
         const { data: existingRecord } = await supabaseAdmin
           .from('attendance')
-          .select('role, nama_peserta')
+          .select('role, nama_peserta, created_at')
           .eq('nim_nip', cleanNimNip)
           .eq('Sesi', sesiName)
           .limit(1);
 
         const existingRole = (existingRecord && existingRecord[0]?.role) || role;
         const existingNama = (existingRecord && existingRecord[0]?.nama_peserta) || verifiedPanitiaName;
+        const existingWaktu = existingRecord && existingRecord[0]?.created_at
+          ? new Date(existingRecord[0].created_at).toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit' }) + ' WITA'
+          : undefined;
 
         return NextResponse.json({ 
           error: `Sistem mendeteksi pengiriman ganda. Anda (atau perangkat Anda) sudah tercatat absen di Sesi ${sesiName}.`,
@@ -295,6 +298,7 @@ export async function POST(req: Request) {
           sesi: sesiName,
           nama_peserta: existingNama,
           role: existingRole,
+          waktu: existingWaktu,
           eligibleForCertificate
         }, { status: 400 });
       }
