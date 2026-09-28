@@ -63,13 +63,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Lapisan 2: Limit Perangkat (ketat untuk mencegah spam visitor_id palsu)
-    if (!checkRateLimit(fpKey, 10)) {
-      return NextResponse.json(
-        { error: 'Terlalu banyak request dari perangkat ini. Silakan coba lagi nanti.' },
-        { status: 429 }
-      );
-    }
 
     if (!nim_nip) {
       return NextResponse.json({ error: 'NIM/NIP wajib diisi.' }, { status: 400 });
