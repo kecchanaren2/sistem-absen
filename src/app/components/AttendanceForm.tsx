@@ -642,7 +642,7 @@ export default function AttendanceForm() {
           const localSiang = !!getLocalAttendanceRecord(2);
           const hasPagi = sesiText === 'Pagi' ? true : (data.eligibleForCertificate ? true : localPagi);
           const hasSiang = sesiText === 'Siang' ? true : localSiang;
-          const isEligible = !!data.eligibleForCertificate || (hasPagi && hasSiang);
+          const isEligible = !!data.eligibleForCertificate || hasPagi || hasSiang;
 
           // Retrieve existing local record before saving to preserve the original attendance timestamp
           const existingLocal = getLocalAttendanceRecord(hariAbsen);
@@ -714,7 +714,7 @@ export default function AttendanceForm() {
       const localSiang = !!getLocalAttendanceRecord(2);
       const hasPagi = hariAbsen === 1 ? true : (data.eligibleForCertificate ? true : localPagi);
       const hasSiang = hariAbsen === 2 ? true : localSiang;
-      const isEligible = !!data.eligibleForCertificate || (hasPagi && hasSiang);
+      const isEligible = !!data.eligibleForCertificate || hasPagi || hasSiang;
 
       setEligibleForCertificate(isEligible);
 
@@ -956,7 +956,7 @@ export default function AttendanceForm() {
                 const localSiang = !!getLocalAttendanceRecord(2);
                 const hasPagi = localHistory.sesi === 'Pagi' || localPagi;
                 const hasSiang = localHistory.sesi === 'Siang' || localSiang;
-                const isEligible = hasPagi && hasSiang;
+                const isEligible = hasPagi || hasSiang;
                 const resolvedRole = localHistory.role || role;
                 const resolvedRoleLabel = getRoleLabel(resolvedRole);
 
@@ -1492,49 +1492,27 @@ export default function AttendanceForm() {
                 </div>
               </div>
 
-              {/* Contextual Notice Banner: Siang Requirement OR 100% Celebration */}
+              {/* Contextual Notice Banner: Certificate Celebration */}
               {successModalData?.isEligible ? (
                 <div className="p-4 bg-gradient-to-r from-amber-500/25 via-orange-500/25 to-amber-500/25 border-2 border-amber-500/60 rounded-2xl flex items-start space-x-3 text-left shadow-sm">
                   <Award className="w-7 h-7 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <h4 className="font-extrabold text-sm sm:text-base text-amber-950 dark:text-amber-200">
-                      Kedua Sesi Lengkap (100%)! 🎉
+                      Kehadiran Terverifikasi! 🎉
                     </h4>
                     <p className="text-xs sm:text-[13px] text-amber-900/90 dark:text-amber-100/90 leading-relaxed">
-                      Selamat! Anda telah menyelesaikan <strong>Sesi Pagi</strong> dan <strong>Sesi Siang</strong>. Kehadiran Anda telah terverifikasi secara resmi untuk penerbitan E-Sertifikat.
+                      Selamat! Kehadiran presensi Anda telah terverifikasi secara resmi untuk penerbitan E-Sertifikat.
                     </p>
                     <p className="text-xs font-bold text-amber-800 dark:text-amber-300 pt-0.5">
                       Silakan klik tombol di bawah untuk membuka Portal Sertifikat dan mengunduh sertifikat Anda.
                     </p>
                   </div>
                 </div>
-              ) : successModalData?.sesi === 'Pagi' ? (
-                <div className="p-4 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 border-2 border-amber-500/60 rounded-2xl flex items-start space-x-3 text-left">
-                  <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <h4 className="font-extrabold text-sm sm:text-base text-amber-950 dark:text-amber-200">
-                      PENTING: Wajib Absensi Sesi Siang Lagi!
-                    </h4>
-                    <p className="text-xs sm:text-[13px] text-amber-900/90 dark:text-amber-100/90 leading-relaxed">
-                      Anda baru menyelesaikan <strong>Sesi Pagi</strong>. Sesuai ketentuan panitia, <strong>E-Sertifikat Resmi</strong> hanya diberikan jika Anda melengkapi kehadiran pada <strong>KEDUA SESI (Pagi & Siang)</strong>.
-                    </p>
-                    <div className="pt-1.5 flex flex-col gap-1 text-xs text-amber-950 dark:text-amber-200">
-                      <div className="flex items-center gap-1.5 font-bold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                        <span>Jadwal Sesi Siang: Pukul {SESSION_SCHEDULES[2].startTime} - {SESSION_SCHEDULES[2].endTime} WITA</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 font-semibold opacity-90">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                        <span>Gunakan HP dan link yang sama untuk absensi penutup nanti siang.</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               ) : (
                 <div className="p-3.5 bg-blue-500/10 dark:bg-blue-950/30 border border-blue-500/30 rounded-2xl flex items-start space-x-2.5 text-left text-xs text-blue-900 dark:text-blue-200">
                   <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                   <div className="leading-relaxed">
-                    <strong className="font-bold">Catatan Sertifikat:</strong> Kehadiran Sesi Siang berhasil dicatat. Sesi Pagi belum terdeteksi. Sesuai ketentuan, sertifikat membutuhkan kehadiran pada kedua sesi. Hubungi panitia jika Anda telah hadir di pagi hari.
+                    <strong className="font-bold">Informasi Sertifikat:</strong> Pastikan Anda telah melakukan absensi agar sertifikat dapat diproses.
                   </div>
                 </div>
               )}
@@ -1774,11 +1752,11 @@ export default function AttendanceForm() {
                         <div>
                           {checkResult.eligibleForCertificate ? (
                             <>
-                              <strong className="font-bold">Berhak E-Sertifikat! 🎉</strong> Anda sudah menyelesaikan kedua sesi. Sertifikat dapat diunduh di Portal Sertifikat.
+                              <strong className="font-bold">Berhak E-Sertifikat! 🎉</strong> Kehadiran Anda telah tercatat. Sertifikat dapat diunduh di Portal Sertifikat.
                             </>
                           ) : (
                             <>
-                              <strong className="font-bold">E-Sertifikat Belum Lengkap:</strong> Harap lengkapi kehadiran pada sesi yang belum tercatat untuk mendapatkan sertifikat.
+                              <strong className="font-bold">Belum Ada Presensi:</strong> Harap lakukan absensi terlebih dahulu untuk mendapatkan sertifikat.
                             </>
                           )}
                         </div>

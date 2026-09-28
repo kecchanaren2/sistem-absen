@@ -212,7 +212,7 @@ export default function CertificateForm() {
               Selamat! Anda Berhak E-Sertifikat 🎉
             </h3>
             <p className="text-[#69422f] dark:text-orange-300 text-xs mb-4 leading-relaxed">
-              Seluruh sesi absensi Anda telah tercatat dengan valid.
+              Kehadiran absensi Anda telah terverifikasi dengan valid.
             </p>
             <button
               type="button"

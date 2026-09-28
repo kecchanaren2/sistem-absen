@@ -286,11 +286,6 @@ export async function POST(req: Request) {
       
       // Penanganan khusus untuk error kode 23505 (Unique Violation / Race Condition)
       if (insertError.code === '23505') {
-        let eligibleForCertificate = false;
-        if (sessionId === 2) {
-          eligibleForCertificate = await checkEligiblePagi(cleanNimNip, email);
-        }
-
         // Ambil data existing dari database untuk mendapatkan role, nama_peserta, dan waktu absensi yang akurat
         const { data: existingRecord } = await supabaseAdmin
           .from('attendance')
@@ -312,18 +307,15 @@ export async function POST(req: Request) {
           nama_peserta: existingNama,
           role: existingRole,
           waktu: existingWaktu,
-          eligibleForCertificate
+          eligibleForCertificate: true
         }, { status: 400 });
       }
 
       return NextResponse.json({ error: `Gagal menyimpan data absensi: ${insertError.message}` }, { status: 500 });
     }
 
-    // 6. Cek Kelayakan Sertifikat (jika Sesi Siang, cek apakah sudah absen Pagi)
-    let eligibleForCertificate = false;
-    if (sessionId === 2) {
-      eligibleForCertificate = await checkEligiblePagi(cleanNimNip, email);
-    }
+    // 6. Cek Kelayakan Sertifikat: Asalkan sudah absensi di pagi atau siang hari, berhak atas sertifikat
+    const eligibleForCertificate = true;
 
     return NextResponse.json({
       success: true,

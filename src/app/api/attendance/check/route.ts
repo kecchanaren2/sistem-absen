@@ -148,7 +148,7 @@ export async function POST(req: Request) {
       hasSiang: !!siangRecord,
       pagiWaktu,
       siangWaktu,
-      eligibleForCertificate: !!pagiRecord && !!siangRecord,
+      eligibleForCertificate: !!pagiRecord || !!siangRecord || records.length > 0,
     });
   } catch (err) {
     console.error('API Check Error:', err);

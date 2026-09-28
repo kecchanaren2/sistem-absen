@@ -120,7 +120,10 @@ export async function POST(req: Request) {
       }
     }
 
-    if (hasPagi && hasSiang) {
+    // Siapapun asalkan sudah absensi di pagi atau siang hari dapat menerima sertifikat
+    const isEligible = hasPagi || hasSiang || attendanceRecords.length > 0;
+
+    if (isEligible) {
       // Panitia names must always come from the whitelist, never from form input.
       const firstRecord = attendanceRecords[0];
       let namaPeserta = firstRecord.nama_peserta;
@@ -165,14 +168,9 @@ export async function POST(req: Request) {
         message: 'Verifikasi berhasil! Anda berhak mengunduh sertifikat.'
       });
     } else {
-      let missingSession = '';
-      if (!hasPagi && !hasSiang) missingSession = 'Sesi Pagi dan Sesi Siang';
-      else if (!hasPagi) missingSession = 'Sesi Pagi';
-      else missingSession = 'Sesi Siang';
-
       return NextResponse.json({
         eligible: false,
-        error: `Anda belum menyelesaikan absensi. Anda belum absen pada: ${missingSession}.`
+        error: 'Data absensi tidak ditemukan. Anda belum melakukan absensi di sesi manapun.'
       }, { status: 400 });
     }
   } catch (error) {
