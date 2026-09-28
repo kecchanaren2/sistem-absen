@@ -84,7 +84,7 @@ export async function POST(req: Request) {
         .eq('nim_nip', cleanNimNip);
       
       if (!rekapError && rekapRecords && rekapRecords.length > 0) {
-        attendanceRecords = rekapRecords;
+        attendanceRecords = rekapRecords as any;
       }
     }
 
