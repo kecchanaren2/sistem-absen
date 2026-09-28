@@ -246,6 +246,41 @@ export async function POST(req: Request) {
         longitude: longitudeNumber
       });
 
+    // Helper untuk mengecek kelayakan sertifikat (Sesi Pagi selesai)
+    // Mendukung 'Pagi', 'Pagi ( 08-00 -10.00 )', '1', atau record sebelum jam 10:00 WITA (02:00 UTC)
+    // Serta mencocokkan via NIM ataupun Email fallback (mengatasi salah ketik NIM)
+    const checkEligiblePagi = async (nim: string, emailStr?: string): Promise<boolean> => {
+      const isPagiMatch = (r: { Sesi?: string; created_at?: string }) => {
+        const s = String(r.Sesi || '').trim().toLowerCase();
+        const isMorning = r.created_at && new Date(r.created_at).getTime() < new Date('2026-09-28T02:00:00Z').getTime();
+        return s.startsWith('pagi') || s === '1' || isMorning;
+      };
+
+      if (nim) {
+        const { data: nimRecords } = await supabaseAdmin
+          .from('attendance')
+          .select('id, Sesi, created_at')
+          .eq('nim_nip', nim);
+
+        if (nimRecords && nimRecords.some(isPagiMatch)) {
+          return true;
+        }
+      }
+
+      if (emailStr) {
+        const { data: emailRecords } = await supabaseAdmin
+          .from('attendance')
+          .select('id, Sesi, created_at')
+          .ilike('email', emailStr.trim().toLowerCase());
+
+        if (emailRecords && emailRecords.some(isPagiMatch)) {
+          return true;
+        }
+      }
+
+      return false;
+    };
+
     if (insertError) {
       console.error('Insert error:', insertError);
       
@@ -253,29 +288,7 @@ export async function POST(req: Request) {
       if (insertError.code === '23505') {
         let eligibleForCertificate = false;
         if (sessionId === 2) {
-          // Cari data Sesi Pagi berdasarkan NIM/NIP terlebih dahulu
-          const { data: pagiData } = await supabaseAdmin
-            .from('attendance')
-            .select('id')
-            .eq('nim_nip', cleanNimNip)
-            .eq('Sesi', 'Pagi')
-            .limit(1);
-
-          if (pagiData && pagiData.length > 0) {
-            eligibleForCertificate = true;
-          } else if (email) {
-            // Fallback cari berdasarkan email jika NIM mengalami perbedaan format
-            const { data: pagiByEmail } = await supabaseAdmin
-              .from('attendance')
-              .select('id')
-              .ilike('email', email.trim().toLowerCase())
-              .eq('Sesi', 'Pagi')
-              .limit(1);
-
-            if (pagiByEmail && pagiByEmail.length > 0) {
-              eligibleForCertificate = true;
-            }
-          }
+          eligibleForCertificate = await checkEligiblePagi(cleanNimNip, email);
         }
 
         // Ambil data existing dari database untuk mendapatkan role, nama_peserta, dan waktu absensi yang akurat
@@ -309,29 +322,7 @@ export async function POST(req: Request) {
     // 6. Cek Kelayakan Sertifikat (jika Sesi Siang, cek apakah sudah absen Pagi)
     let eligibleForCertificate = false;
     if (sessionId === 2) {
-      // Cari data Sesi Pagi berdasarkan NIM/NIP terlebih dahulu
-      const { data: pagiData } = await supabaseAdmin
-        .from('attendance')
-        .select('id')
-        .eq('nim_nip', cleanNimNip)
-        .eq('Sesi', 'Pagi')
-        .limit(1);
-
-      if (pagiData && pagiData.length > 0) {
-        eligibleForCertificate = true;
-      } else if (email) {
-        // Fallback cari berdasarkan email
-        const { data: pagiByEmail } = await supabaseAdmin
-          .from('attendance')
-          .select('id')
-          .ilike('email', email.trim().toLowerCase())
-          .eq('Sesi', 'Pagi')
-          .limit(1);
-
-        if (pagiByEmail && pagiByEmail.length > 0) {
-          eligibleForCertificate = true;
-        }
-      }
+      eligibleForCertificate = await checkEligiblePagi(cleanNimNip, email);
     }
 
     return NextResponse.json({

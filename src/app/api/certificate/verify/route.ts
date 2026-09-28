@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     // Query attendance records for this NIM/NIP
     const { data: attendanceRecords, error } = await supabaseAdmin
       .from('attendance')
-      .select('Sesi, nama_peserta, role, nim_nip')
+      .select('Sesi, nama_peserta, role, nim_nip, email, created_at')
       .eq('nim_nip', cleanNimNip);
 
     if (error) {
@@ -92,9 +92,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Data absensi tidak ditemukan untuk NIM/NIP tersebut.' }, { status: 404 });
     }
 
-    // Check sessions
-    const hasPagi = attendanceRecords.some(record => record.Sesi === 'Pagi');
-    const hasSiang = attendanceRecords.some(record => record.Sesi === 'Siang');
+    // Helper pendeteksi sesi yang fleksibel
+    const isPagiSesi = (s?: string, created?: string) => {
+      const str = String(s || '').trim().toLowerCase();
+      const isMorning = created && new Date(created).getTime() < new Date('2026-09-28T02:00:00Z').getTime();
+      return str.startsWith('pagi') || str === '1' || isMorning;
+    };
+    const isSiangSesi = (s?: string) => {
+      const str = String(s || '').trim().toLowerCase();
+      return str.startsWith('siang') || str === '2';
+    };
+
+    let hasPagi = attendanceRecords.some((r) => isPagiSesi(r.Sesi, r.created_at));
+    const hasSiang = attendanceRecords.some((r) => isSiangSesi(r.Sesi));
+
+    // Fallback: Jika Sesi Pagi belum terdeteksi dari NIM saja, cek berdasarkan Email
+    // (Menyelamatkan peserta yang salah ketik NIM saat Sesi Pagi)
+    const attendeeEmail = attendanceRecords[0]?.email;
+    if (!hasPagi && attendeeEmail) {
+      const { data: emailRecords } = await supabaseAdmin
+        .from('attendance')
+        .select('Sesi, created_at')
+        .ilike('email', String(attendeeEmail).trim().toLowerCase());
+
+      if (emailRecords && emailRecords.some((r) => isPagiSesi(r.Sesi, r.created_at))) {
+        hasPagi = true;
+      }
+    }
 
     if (hasPagi && hasSiang) {
       // Panitia names must always come from the whitelist, never from form input.

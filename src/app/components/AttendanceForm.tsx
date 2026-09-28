@@ -265,7 +265,7 @@ export default function AttendanceForm() {
       const res = await fetch('/api/attendance/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nim_nip: clean }),
+        body: JSON.stringify({ nim_nip: clean, email: email ? email.trim() : undefined }),
       });
       if (!res.ok) return null;
       const result = await res.json();
@@ -482,7 +482,7 @@ export default function AttendanceForm() {
       const res = await fetch('/api/attendance/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nim_nip: clean }),
+        body: JSON.stringify({ nim_nip: clean, email: email ? email.trim() : undefined }),
       });
       const result = await res.json();
       if (!res.ok) {
@@ -1400,12 +1400,12 @@ export default function AttendanceForm() {
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 {successModalData?.isEligible
-                  ? 'Kedua Sesi Lengkap! 🎓'
+                  ? 'Kedua Sesi Lengkap!'
                   : successModalData?.isAlreadyRecorded
-                    ? 'Sudah Tercatat Absen! 🛡️'
+                    ? 'Sudah Tercatat Absen!'
                     : successModalData?.sesi === 'Pagi'
-                      ? 'Absensi Sesi Pagi Berhasil! 🌅'
-                      : 'Absensi Sesi Siang Berhasil! ☀️'}
+                      ? 'Absensi Sesi Pagi Berhasil!'
+                      : 'Absensi Sesi Siang Berhasil!'}
               </h2>
               <p className="text-white/90 text-xs sm:text-sm mt-1 max-w-xs font-medium leading-relaxed">
                 {successModalData?.isEligible
@@ -1513,7 +1513,7 @@ export default function AttendanceForm() {
                   <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <h4 className="font-extrabold text-sm sm:text-base text-amber-950 dark:text-amber-200">
-                      PENTING: Wajib Absensi Sesi Siang Lagi! ⚠️
+                      PENTING: Wajib Absensi Sesi Siang Lagi!
                     </h4>
                     <p className="text-xs sm:text-[13px] text-amber-900/90 dark:text-amber-100/90 leading-relaxed">
                       Anda baru menyelesaikan <strong>Sesi Pagi</strong>. Sesuai ketentuan panitia, <strong>E-Sertifikat Resmi</strong> hanya diberikan jika Anda melengkapi kehadiran pada <strong>KEDUA SESI (Pagi & Siang)</strong>.
