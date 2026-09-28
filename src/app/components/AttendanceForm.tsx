@@ -180,6 +180,7 @@ export default function AttendanceForm() {
   const [fpStatus, setFpStatus] = useState<'pending' | 'success' | 'error'>('pending');
   const [roleOpen, setRoleOpen] = useState(false);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
+  const isSubmittingRef = useRef(false);
 
   const [visitorId, setVisitorId] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -575,6 +576,9 @@ export default function AttendanceForm() {
   };
 
   const executeSubmit = async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+
     setShowConfirm(false);
     setIsLoading(true);
     setMessage(null);
@@ -1049,7 +1053,7 @@ export default function AttendanceForm() {
                 type="button"
                 id="role-dropdown-btn"
                 onClick={() => setRoleOpen((o) => !o)}
-                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-sm font-semibold transition-all touch-manipulation active:scale-[0.99] bg-[#efe7e2] dark:bg-[#34241d] shadow-xs ${roleOpen
+                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-sm font-semibold transition-all touch-manipulation active:scale-[0.99] cursor-pointer bg-[#efe7e2] dark:bg-[#34241d] shadow-xs ${roleOpen
                   ? 'border-orange-500 ring-2 ring-orange-500/20 text-[#2c1e18] dark:text-[#f5ece7] dark:border-orange-500'
                   : 'border-[#decbc0] dark:border-[#4f382c] text-[#2c1e18] dark:text-[#f5ece7] hover:border-orange-400 dark:hover:border-orange-500'
                   }`}
@@ -1082,7 +1086,7 @@ export default function AttendanceForm() {
                         setMessage(null);
                         setRoleOpen(false);
                       }}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation active:scale-[0.99] ${role === r.value
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation cursor-pointer active:scale-[0.99] ${role === r.value
                         ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 font-bold'
                         : 'text-[#3d2b22] dark:text-[#e5d8d0] hover:bg-[#efe7e2] dark:hover:bg-[#38261e]'
                         }`}
@@ -1109,7 +1113,7 @@ export default function AttendanceForm() {
                         setMessage(null);
                         setRoleOpen(false);
                       }}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation active:scale-[0.99] ${role === r.value
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation cursor-pointer active:scale-[0.99] ${role === r.value
                         ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 font-bold'
                         : 'text-[#3d2b22] dark:text-[#e5d8d0] hover:bg-[#efe7e2] dark:hover:bg-[#38261e]'
                         }`}
