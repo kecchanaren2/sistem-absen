@@ -71,18 +71,30 @@ export async function POST(req: Request) {
     const cleanNimNip = String(nim_nip).trim();
 
     // Query attendance records for this NIM/NIP
-    const { data: attendanceRecords, error } = await supabaseAdmin
+    let { data: attendanceRecords, error } = await supabaseAdmin
       .from('attendance')
       .select('Sesi, nama_peserta, role, nim_nip, email, created_at')
       .eq('nim_nip', cleanNimNip);
 
-    if (error) {
+    // Jika tidak ditemukan di attendance, cari di rekap_gabungan
+    if (!attendanceRecords || attendanceRecords.length === 0) {
+      const { data: rekapRecords, error: rekapError } = await supabaseAdmin
+        .from('rekap_gabungan')
+        .select('nama_peserta, role, nim_nip')
+        .eq('nim_nip', cleanNimNip);
+      
+      if (!rekapError && rekapRecords && rekapRecords.length > 0) {
+        attendanceRecords = rekapRecords;
+      }
+    }
+
+    if (error && (!attendanceRecords || attendanceRecords.length === 0)) {
       console.error('Supabase error:', error);
       return NextResponse.json({ error: 'Terjadi kesalahan saat mengecek data absensi.' }, { status: 500 });
     }
 
     if (!attendanceRecords || attendanceRecords.length === 0) {
-      return NextResponse.json({ error: 'Data absensi tidak ditemukan untuk NIM/NIP tersebut.' }, { status: 404 });
+      return NextResponse.json({ error: 'Data absensi tidak ditemukan untuk NIM/NIP tersebut. Pastikan NIM yang Anda masukkan sama persis dengan data form.' }, { status: 404 });
     }
 
     // Helper pendeteksi sesi yang fleksibel
@@ -120,8 +132,12 @@ export async function POST(req: Request) {
       // Panitia names must always come from the whitelist, never from form input.
       const firstRecord = attendanceRecords[0];
       let namaPeserta = firstRecord.nama_peserta;
+      
+      // Normalize role name to handle CSV inconsistencies (e.g. "Peserta Dosen" -> "peserta_dosen")
+      let rawRole = firstRecord.role || 'peserta_mahasiswa';
+      let normalizedRole = String(rawRole).toLowerCase().trim().replace(/\s+/g, '_');
 
-      if (firstRecord.role === 'panitia_mahasiswa') {
+      if (normalizedRole === 'panitia_mahasiswa') {
         const { data: panitia, error: panitiaError } = await supabaseAdmin
           .from('Panitia Mahasiswa')
           .select('Nama')
@@ -136,7 +152,7 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: 'Data Panitia Mahasiswa tidak ditemukan.' }, { status: 404 });
         }
         namaPeserta = panitia.Nama;
-      } else if (firstRecord.role === 'panitia_dosen') {
+      } else if (normalizedRole === 'panitia_dosen') {
         const { data: panitia, error: panitiaError } = await supabaseAdmin
           .from('Panitia Dosen')
           .select('Nama')
@@ -153,11 +169,10 @@ export async function POST(req: Request) {
         namaPeserta = panitia.Nama;
       }
 
-      const role = firstRecord.role;
       return NextResponse.json({
         eligible: true,
         nama_peserta: namaPeserta,
-        role: role,
+        role: normalizedRole,
         message: 'Verifikasi berhasil! Anda berhak mengunduh sertifikat.'
       });
     } else {
