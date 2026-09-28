@@ -14,10 +14,67 @@ import {
   UserCheck,
   Award,
   Sun,
-  Moon
+  Moon,
+  X,
+  ShieldCheck,
+  Search
 } from 'lucide-react';
 import { getSessionStatus, SESSION_SCHEDULES, SessionStatus } from '@/lib/schedule';
 import QRCodeWidget from './QRCodeWidget';
+
+// Dual-layer storage helpers (LocalStorage + Cookie fallback)
+function saveLocalAttendanceRecord(
+  sesi: number,
+  record: { nama: string; nimNip: string; sesi: string; waktu: string }
+) {
+  if (typeof window === 'undefined') return;
+  const recordStr = JSON.stringify(record);
+
+  // Layer 1: LocalStorage
+  try {
+    localStorage.setItem('absen_history_sesi_' + sesi, recordStr);
+  } catch (err) {
+    console.warn('LocalStorage save error:', err);
+  }
+
+  // Layer 2: Cookie (24 hours expiry, SameSite=Lax, Secure on HTTPS)
+  try {
+    const isSecure = window.location.protocol === 'https:' ? '; Secure' : '';
+    const encoded = encodeURIComponent(recordStr);
+    document.cookie = `absen_history_sesi_${sesi}=${encoded}; path=/; max-age=86400; SameSite=Lax${isSecure}`;
+  } catch (err) {
+    console.warn('Cookie save error:', err);
+  }
+}
+
+function getLocalAttendanceRecord(
+  sesi: number
+): { nama: string; nimNip: string; sesi: string; waktu: string } | null {
+  if (typeof window === 'undefined') return null;
+
+  // Layer 1: LocalStorage (Fastest)
+  try {
+    const saved = localStorage.getItem('absen_history_sesi_' + sesi);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch {}
+
+  // Layer 2: Cookie fallback (In case LocalStorage was purged by iOS Safari private mode or browser cleaning)
+  try {
+    const match = document.cookie.match(new RegExp(`(?:^|; )absen_history_sesi_${sesi}=([^;]+)`));
+    if (match && match[1]) {
+      const parsed = JSON.parse(decodeURIComponent(match[1]));
+      // Self-heal: sync back to LocalStorage
+      try {
+        localStorage.setItem('absen_history_sesi_' + sesi, JSON.stringify(parsed));
+      } catch {}
+      return parsed;
+    }
+  } catch {}
+
+  return null;
+}
 
 export default function AttendanceForm() {
   const [email, setEmail] = useState('');
@@ -28,6 +85,41 @@ export default function AttendanceForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [eligibleForCertificate, setEligibleForCertificate] = useState(false);
+
+  // States for automatic large success modal
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalData, setSuccessModalData] = useState<{
+    nama: string;
+    nimNip: string;
+    sesi: string;
+    waktu: string;
+    isEligible: boolean;
+    message: string;
+    isAlreadyRecorded?: boolean;
+  } | null>(null);
+
+  // States for local device history (reassurance on page reload)
+  const [localHistory, setLocalHistory] = useState<{
+    nama: string;
+    nimNip: string;
+    sesi: string;
+    waktu: string;
+  } | null>(null);
+
+  // States for Quick Attendance Status Checker Modal
+  const [showCheckModal, setShowCheckModal] = useState(false);
+  const [checkNimNip, setCheckNimNip] = useState('');
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [checkResult, setCheckResult] = useState<{
+    found: boolean;
+    nama?: string;
+    nim_nip?: string;
+    role?: string;
+    hasPagi?: boolean;
+    hasSiang?: boolean;
+    eligibleForCertificate?: boolean;
+    message?: string;
+  } | null>(null);
 
   // Realtime Clock
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -109,6 +201,12 @@ export default function AttendanceForm() {
     const interval = setInterval(updateTick, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Load local device history on session change / mount (Dual-layer: LocalStorage + Cookie)
+  useEffect(() => {
+    const record = getLocalAttendanceRecord(hariAbsen);
+    setLocalHistory(record);
+  }, [hariAbsen]);
 
   useEffect(() => {
     // Initialize FingerprintJS with Safari / iOS anti-tracking fallback
@@ -245,6 +343,33 @@ export default function AttendanceForm() {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
+  const handleCheckStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = checkNimNip.trim();
+    if (!clean) return;
+
+    setIsCheckingStatus(true);
+    setCheckResult(null);
+
+    try {
+      const res = await fetch('/api/attendance/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nim_nip: clean }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || 'Gagal memeriksa status');
+      }
+      setCheckResult(result);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal memeriksa status';
+      setCheckResult({ found: false, message: msg });
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
   const selectedSessionStatus = hariAbsen === 1 ? status1 : status2;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -342,6 +467,40 @@ export default function AttendanceForm() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Smart Duplicate Interceptor:
+        // Jika server mendeteksi sudah tercatat absen sebelumnya (misal akibat koneksi sempat lag atau submit ulang)
+        if (data.already_attended || data.error?.toLowerCase().includes('sudah tercatat absen') || data.error?.toLowerCase().includes('ganda')) {
+          const sesiText = data.sesi || (hariAbsen === 1 ? 'Pagi' : 'Siang');
+          const finalName = namaPeserta || 'Peserta';
+          const currentTimeFormatted = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA';
+
+          // Simpan riwayat perangkat lokal (Dual-layer: LocalStorage + Cookie)
+          const hist = {
+            nama: finalName,
+            nimNip: cleanNimNip,
+            sesi: sesiText,
+            waktu: currentTimeFormatted,
+          };
+          saveLocalAttendanceRecord(hariAbsen, hist);
+          setLocalHistory(hist);
+
+          setSuccessModalData({
+            nama: finalName,
+            nimNip: cleanNimNip,
+            sesi: sesiText,
+            waktu: 'Telah Diverifikasi di Database',
+            isEligible: false,
+            message: `Data Anda untuk Sesi ${sesiText} SUDAH TERCATAT RESMI di server. Anda tidak perlu mengulang absensi.`,
+            isAlreadyRecorded: true,
+          });
+          setShowSuccessModal(true);
+          setMessage({
+            text: `Anda sudah tercatat absen di Sesi ${sesiText}. Data Anda aman tersimpan di database.`,
+            type: 'success',
+          });
+          return;
+        }
+
         throw new Error(data.error || 'Terjadi kesalahan');
       }
 
@@ -351,10 +510,35 @@ export default function AttendanceForm() {
       }
 
       setMessage({ text: data.message, type: 'success' });
+      const finalName = data.nama_peserta || namaPeserta;
       if (data.nama_peserta) {
         setNamaPeserta(data.nama_peserta);
       }
       setEligibleForCertificate(data.eligibleForCertificate);
+
+      const currentTimeFormatted = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WITA';
+
+      // Simpan riwayat perangkat lokal (Dual-layer: LocalStorage + Cookie)
+      const hist = {
+        nama: finalName,
+        nimNip: cleanNimNip,
+        sesi: hariAbsen === 1 ? 'Pagi' : 'Siang',
+        waktu: currentTimeFormatted,
+      };
+      saveLocalAttendanceRecord(hariAbsen, hist);
+      setLocalHistory(hist);
+
+      // Tampilkan popup sukses otomatis yang besar dan jelas
+      setSuccessModalData({
+        nama: finalName,
+        nimNip: cleanNimNip,
+        sesi: hariAbsen === 1 ? 'Pagi' : 'Siang',
+        waktu: currentTimeFormatted,
+        isEligible: !!data.eligibleForCertificate,
+        message: data.message || 'Absensi berhasil disimpan!',
+        isAlreadyRecorded: false,
+      });
+      setShowSuccessModal(true);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan';
       setMessage({ text: errorMessage, type: 'error' });
@@ -527,6 +711,41 @@ export default function AttendanceForm() {
             <div className="leading-relaxed">
               <strong className="font-bold">Membuka dari Aplikasi Chat/In-App:</strong> Terdeteksi membuka dari dalam aplikasi (WhatsApp/Instagram/dll). Izin lokasi sering terblokir di iPhone. Jika terjadi kendala izin GPS, silakan ketuk ikon titik tiga (•••) atau tombol bagikan di pojok, lalu pilih <strong className="underline">"Buka di Safari"</strong>.
             </div>
+          </div>
+        )}
+
+        {/* Local Device History Banner (0 network & 0 server cost) */}
+        {localHistory && (
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm flex items-start justify-between gap-3 shadow-xs">
+            <div className="flex items-start space-x-2.5">
+              <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold text-emerald-950 dark:text-emerald-100">
+                  Perangkat Ini Sudah Absen Sesi {localHistory.sesi}
+                </div>
+                <div className="text-[11px] sm:text-xs text-emerald-800/85 dark:text-emerald-300/80 mt-0.5 leading-relaxed">
+                  Tercatat untuk <strong className="font-bold">{localHistory.nama}</strong> ({localHistory.nimNip}) pukul {localHistory.waktu}.
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSuccessModalData({
+                  nama: localHistory.nama,
+                  nimNip: localHistory.nimNip,
+                  sesi: localHistory.sesi,
+                  waktu: localHistory.waktu,
+                  isEligible: false,
+                  message: 'Bukti riwayat absensi pada perangkat ini.',
+                  isAlreadyRecorded: true,
+                });
+                setShowSuccessModal(true);
+              }}
+              className="text-xs font-bold text-emerald-700 dark:text-emerald-300 underline hover:text-emerald-800 whitespace-nowrap self-center cursor-pointer touch-manipulation"
+            >
+              Lihat Bukti
+            </button>
           </div>
         )}
 
@@ -830,6 +1049,20 @@ export default function AttendanceForm() {
           >
             Portal Sertifikat
           </a>
+
+          {/* Quick Check Attendance Status Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setCheckNimNip(nimNip.trim());
+              setCheckResult(null);
+              setShowCheckModal(true);
+            }}
+            className="w-full py-3 px-4 rounded-2xl font-bold text-sm sm:text-base transition-all flex justify-center items-center gap-2 border border-[#d7bca8] dark:border-[#4f382c] bg-white/70 dark:bg-[#1f140f] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#efe7e2] dark:hover:bg-[#2c1d17] active:scale-[0.98] shadow-xs cursor-pointer touch-manipulation"
+          >
+            <Search className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <span>Cek Status Kehadiran Saya</span>
+          </button>
         </form>
       </div>
 
@@ -861,6 +1094,332 @@ export default function AttendanceForm() {
                   Batal, Cek Lagi
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Large Automatic Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl sm:rounded-[32px] shadow-2xl w-full max-w-md sm:max-w-lg overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            {/* Header Ribbon / Banner */}
+            <div className={`relative px-6 pt-7 pb-6 text-white text-center flex flex-col items-center justify-center overflow-hidden flex-shrink-0 ${
+              successModalData?.isAlreadyRecorded
+                ? 'bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700'
+                : 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700'
+            }`}>
+              {/* Close Button X */}
+              <button
+                type="button"
+                onClick={() => setShowSuccessModal(false)}
+                className="absolute top-3.5 right-3.5 text-white/80 hover:text-white p-2 rounded-full hover:bg-white/15 transition-all touch-manipulation active:scale-95 cursor-pointer"
+                aria-label="Tutup popup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Big Animated Icon */}
+              <div className={`h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white flex items-center justify-center shadow-xl mb-3 ring-8 ring-white/20 ${
+                successModalData?.isAlreadyRecorded ? 'text-blue-600 shadow-blue-950/20' : 'text-emerald-600 shadow-emerald-950/20'
+              }`}>
+                {successModalData?.isAlreadyRecorded ? (
+                  <ShieldCheck className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 stroke-[2.5]" />
+                ) : (
+                  <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-emerald-600 stroke-[2.5]" />
+                )}
+              </div>
+
+              <span className="text-[10px] sm:text-[11px] uppercase font-black tracking-widest text-white/90 bg-white/20 px-3 py-0.5 rounded-full mb-1">
+                {successModalData?.isAlreadyRecorded ? 'Telah Terdaftar di Database' : 'Tercatat Resmi'}
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                {successModalData?.isAlreadyRecorded ? 'Sudah Tercatat Absen! 🛡️' : 'Absensi Berhasil! 🎉'}
+              </h2>
+              <p className="text-white/90 text-xs sm:text-sm mt-1 max-w-xs font-medium leading-relaxed">
+                {successModalData?.isAlreadyRecorded
+                  ? 'Data Anda untuk sesi ini sudah aman tersimpan di database. Tidak perlu melakukan absensi ulang.'
+                  : 'Kehadiran Anda telah sukses diverifikasi dan disimpan ke database.'}
+              </p>
+            </div>
+
+            {/* Scrollable Content Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto flex flex-col space-y-3.5">
+              {/* Summary Details Card */}
+              <div className="bg-[#efe7e2] dark:bg-[#34241d] rounded-2xl p-4 border border-[#decbc0] dark:border-[#4f382c] space-y-2.5 text-sm">
+                <div className="flex justify-between items-center pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
+                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
+                    Sesi Absensi
+                  </span>
+                  <span className={`px-3 py-0.5 font-extrabold text-xs sm:text-sm rounded-full ${
+                    successModalData?.isAlreadyRecorded
+                      ? 'bg-blue-500/20 border border-blue-500/40 text-blue-900 dark:text-blue-300'
+                      : 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-900 dark:text-emerald-300'
+                  }`}>
+                    Sesi {successModalData?.sesi}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-start pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
+                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
+                    Nama Lengkap
+                  </span>
+                  <span className="font-extrabold text-sm sm:text-base text-[#2c1e18] dark:text-[#f5ece7] text-right max-w-[65%]">
+                    {successModalData?.nama}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
+                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
+                    {isDosenRole ? 'NIP' : 'NIM'}
+                  </span>
+                  <span className="font-mono font-bold text-sm sm:text-base text-[#2c1e18] dark:text-[#f5ece7]">
+                    {successModalData?.nimNip}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
+                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
+                    Status Validasi
+                  </span>
+                  <span className={`text-xs font-bold flex items-center gap-1 ${
+                    successModalData?.isAlreadyRecorded ? 'text-blue-700 dark:text-blue-400' : 'text-emerald-700 dark:text-emerald-400'
+                  }`}>
+                    <ShieldCheck className="w-4 h-4" />
+                    Terverifikasi di Database
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
+                    Waktu Catatan
+                  </span>
+                  <span className="text-xs sm:text-sm font-semibold text-[#5a4439] dark:text-[#c9b8ae] flex items-center gap-1 font-mono">
+                    <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+                    {successModalData?.waktu}
+                  </span>
+                </div>
+              </div>
+
+              {/* Certificate Information Card */}
+              {successModalData?.isEligible ? (
+                <div className="p-4 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border border-amber-500/40 rounded-2xl flex items-start space-x-3 text-left">
+                  <Award className="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-sm text-[#3d2417] dark:text-[#fde68a]">
+                      E-Sertifikat Siap Diunduh! 🎉
+                    </h4>
+                    <p className="text-xs text-[#69422f] dark:text-[#cbd5e1] mt-0.5 leading-relaxed">
+                      Selamat, Anda telah melengkapi seluruh sesi absensi. Sertifikat resmi dapat langsung diunduh melalui Portal Sertifikat.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-amber-500/10 dark:bg-amber-950/30 border border-amber-500/30 rounded-2xl flex items-start space-x-2.5 text-left text-xs text-amber-900 dark:text-amber-200">
+                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">
+                    {successModalData?.sesi === 'Pagi' ? (
+                      <>
+                        Harap melakukan absensi kembali pada <strong>Sesi Siang (13:00 - 16:00 WITA)</strong> untuk melengkapi kehadiran dan klaim E-Sertifikat.
+                      </>
+                    ) : (
+                      <>
+                        Terima kasih atas kehadiran Anda. Pastikan Anda juga telah absen di Sesi Pagi agar berhak mendapatkan E-Sertifikat resmi.
+                      </>
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2.5 pt-1">
+                {successModalData?.isEligible && (
+                  <a
+                    href="/sertifikat"
+                    className="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center space-x-2 text-center text-sm sm:text-base touch-manipulation"
+                  >
+                    <Award className="w-5 h-5 flex-shrink-0" />
+                    <span>Klaim E-Sertifikat Sekarang</span>
+                  </a>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowSuccessModal(false)}
+                  className={`w-full py-3.5 px-4 rounded-xl font-bold transition-all active:scale-[0.98] text-sm sm:text-base touch-manipulation cursor-pointer ${
+                    successModalData?.isEligible
+                      ? 'bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23] border border-[#decbc0] dark:border-[#4f382c]'
+                      : 'text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-600/25'
+                  }`}
+                >
+                  {successModalData?.isEligible ? 'Tutup Dialog' : 'Selesai & Tutup'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Check Attendance Status Modal (Ultra Lightweight) */}
+      {showCheckModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl sm:rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="relative px-6 pt-6 pb-5 text-center bg-gradient-to-br from-[#ea580c] via-[#f97316] to-[#f59e0b] text-white flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCheckModal(false);
+                  setCheckResult(null);
+                }}
+                className="absolute top-3.5 right-3.5 text-white/80 hover:text-white p-2 rounded-full hover:bg-white/15 transition-all touch-manipulation active:scale-95 cursor-pointer"
+                aria-label="Tutup modal cek"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="mx-auto w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mb-2">
+                <Search className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-white">
+                Cek Status Absensi
+              </h3>
+              <p className="text-xs text-orange-100 mt-0.5">
+                Periksa apakah kehadiran Anda sudah tercatat di sistem
+              </p>
+            </div>
+
+            {/* Form & Results */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
+              <form onSubmit={handleCheckStatus} className="space-y-3">
+                <div className="flex flex-col space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
+                    Masukkan NIM / NIP
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={checkNimNip}
+                      onChange={(e) => setCheckNimNip(e.target.value.replace(/\D/g, ''))}
+                      placeholder="Contoh: 2108561001"
+                      className="flex-1 px-4 py-3 text-sm rounded-xl border border-[#decbc0] dark:border-[#4f382c] bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] focus:ring-2 focus:ring-orange-500 font-mono"
+                      autoComplete="off"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isCheckingStatus || !checkNimNip.trim()}
+                      className="px-5 py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-orange-500/20 flex items-center justify-center whitespace-nowrap cursor-pointer"
+                    >
+                      {isCheckingStatus ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        'Cek'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {/* Result Area */}
+              {checkResult && (
+                <div className="animate-in fade-in zoom-in-95 duration-150">
+                  {checkResult.found ? (
+                    <div className="bg-[#efe7e2] dark:bg-[#34241d] rounded-2xl p-4 border border-[#decbc0] dark:border-[#4f382c] space-y-3 text-sm">
+                      <div className="pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
+                          Nama Terdaftar
+                        </div>
+                        <div className="font-extrabold text-base text-[#2c1e18] dark:text-[#f5ece7] mt-0.5">
+                          {checkResult.nama}
+                        </div>
+                        <div className="text-xs font-mono text-[#7e695d] dark:text-[#a8968c]">
+                          NIM/NIP: {checkResult.nim_nip}
+                        </div>
+                      </div>
+
+                      {/* Sessions Checklist */}
+                      <div className="space-y-2">
+                        <div className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
+                          Status Sesi
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center ${
+                            checkResult.hasPagi
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
+                              : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
+                          }`}>
+                            <span className="text-xs font-bold">Sesi Pagi</span>
+                            <span className={`text-[11px] font-extrabold mt-1 flex items-center gap-1 ${
+                              checkResult.hasPagi ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-500'
+                            }`}>
+                              {checkResult.hasPagi ? '✓ Sudah Absen' : '⏳ Belum Absen'}
+                            </span>
+                          </div>
+
+                          <div className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center ${
+                            checkResult.hasSiang
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
+                              : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
+                          }`}>
+                            <span className="text-xs font-bold">Sesi Siang</span>
+                            <span className={`text-[11px] font-extrabold mt-1 flex items-center gap-1 ${
+                              checkResult.hasSiang ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-500'
+                            }`}>
+                              {checkResult.hasSiang ? '✓ Sudah Absen' : '⏳ Belum Absen'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Certificate Status */}
+                      <div className={`p-3 rounded-xl border text-xs leading-relaxed flex items-start space-x-2 ${
+                        checkResult.eligibleForCertificate
+                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-950 dark:text-amber-200'
+                          : 'bg-blue-500/10 border-blue-500/30 text-blue-900 dark:text-blue-200'
+                      }`}>
+                        <Award className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <div>
+                          {checkResult.eligibleForCertificate ? (
+                            <>
+                              <strong className="font-bold">Berhak E-Sertifikat! 🎉</strong> Anda sudah menyelesaikan kedua sesi. Sertifikat dapat diunduh di Portal Sertifikat.
+                            </>
+                          ) : (
+                            <>
+                              <strong className="font-bold">E-Sertifikat Belum Lengkap:</strong> Harap lengkapi kehadiran pada sesi yang belum tercatat untuk mendapatkan sertifikat.
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {checkResult.eligibleForCertificate && (
+                        <a
+                          href="/sertifikat"
+                          className="w-full py-2.5 px-3 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-orange-600 to-amber-600 flex items-center justify-center gap-1.5 shadow-sm mt-1 cursor-pointer"
+                        >
+                          <Award className="w-4 h-4" />
+                          <span>Buka Portal Sertifikat</span>
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-900 dark:text-rose-200 flex items-start space-x-2.5">
+                      <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+                      <span>{checkResult.message || 'Belum ada data absensi untuk NIM/NIP tersebut.'}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCheckModal(false);
+                  setCheckResult(null);
+                }}
+                className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23] transition-all cursor-pointer"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>

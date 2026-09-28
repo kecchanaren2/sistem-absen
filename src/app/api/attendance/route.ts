@@ -252,7 +252,9 @@ export async function POST(req: Request) {
       // Penanganan khusus untuk error kode 23505 (Unique Violation / Race Condition)
       if (insertError.code === '23505') {
         return NextResponse.json({ 
-          error: `Sistem mendeteksi pengiriman ganda. Anda (atau perangkat Anda) sudah tercatat absen di Sesi ${sesiName}.` 
+          error: `Sistem mendeteksi pengiriman ganda. Anda (atau perangkat Anda) sudah tercatat absen di Sesi ${sesiName}.`,
+          already_attended: true,
+          sesi: sesiName
         }, { status: 400 });
       }
 
