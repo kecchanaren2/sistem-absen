@@ -238,7 +238,7 @@ export async function POST(req: Request) {
         email,
         nama_peserta: verifiedPanitiaName,
         role,
-        nim_nip,
+        nim_nip: cleanNimNip,
         Sesi: sesiName,
         visitor_id,
         local_token: newToken,
@@ -251,10 +251,51 @@ export async function POST(req: Request) {
       
       // Penanganan khusus untuk error kode 23505 (Unique Violation / Race Condition)
       if (insertError.code === '23505') {
+        let eligibleForCertificate = false;
+        if (sessionId === 2) {
+          // Cari data Sesi Pagi berdasarkan NIM/NIP terlebih dahulu
+          const { data: pagiData } = await supabaseAdmin
+            .from('attendance')
+            .select('id')
+            .eq('nim_nip', cleanNimNip)
+            .eq('Sesi', 'Pagi')
+            .limit(1);
+
+          if (pagiData && pagiData.length > 0) {
+            eligibleForCertificate = true;
+          } else if (email) {
+            // Fallback cari berdasarkan email jika NIM mengalami perbedaan format
+            const { data: pagiByEmail } = await supabaseAdmin
+              .from('attendance')
+              .select('id')
+              .ilike('email', email.trim().toLowerCase())
+              .eq('Sesi', 'Pagi')
+              .limit(1);
+
+            if (pagiByEmail && pagiByEmail.length > 0) {
+              eligibleForCertificate = true;
+            }
+          }
+        }
+
+        // Ambil data existing dari database untuk mendapatkan role dan nama_peserta yang akurat
+        const { data: existingRecord } = await supabaseAdmin
+          .from('attendance')
+          .select('role, nama_peserta')
+          .eq('nim_nip', cleanNimNip)
+          .eq('Sesi', sesiName)
+          .limit(1);
+
+        const existingRole = (existingRecord && existingRecord[0]?.role) || role;
+        const existingNama = (existingRecord && existingRecord[0]?.nama_peserta) || verifiedPanitiaName;
+
         return NextResponse.json({ 
           error: `Sistem mendeteksi pengiriman ganda. Anda (atau perangkat Anda) sudah tercatat absen di Sesi ${sesiName}.`,
           already_attended: true,
-          sesi: sesiName
+          sesi: sesiName,
+          nama_peserta: existingNama,
+          role: existingRole,
+          eligibleForCertificate
         }, { status: 400 });
       }
 
@@ -264,15 +305,28 @@ export async function POST(req: Request) {
     // 6. Cek Kelayakan Sertifikat (jika Sesi Siang, cek apakah sudah absen Pagi)
     let eligibleForCertificate = false;
     if (sessionId === 2) {
+      // Cari data Sesi Pagi berdasarkan NIM/NIP terlebih dahulu
       const { data: pagiData } = await supabaseAdmin
         .from('attendance')
         .select('id')
-        .eq('email', email)
+        .eq('nim_nip', cleanNimNip)
         .eq('Sesi', 'Pagi')
-        .maybeSingle();
+        .limit(1);
 
-      if (pagiData) {
+      if (pagiData && pagiData.length > 0) {
         eligibleForCertificate = true;
+      } else if (email) {
+        // Fallback cari berdasarkan email
+        const { data: pagiByEmail } = await supabaseAdmin
+          .from('attendance')
+          .select('id')
+          .ilike('email', email.trim().toLowerCase())
+          .eq('Sesi', 'Pagi')
+          .limit(1);
+
+        if (pagiByEmail && pagiByEmail.length > 0) {
+          eligibleForCertificate = true;
+        }
       }
     }
 
@@ -281,6 +335,7 @@ export async function POST(req: Request) {
       message: `Absensi Sesi ${sesiName} berhasil disimpan!`,
       local_token: newToken,
       nama_peserta: verifiedPanitiaName,
+      role,
       eligibleForCertificate
     });
 

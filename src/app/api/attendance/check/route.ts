@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     // Fast indexed query on attendance table
     const { data: records, error } = await supabaseAdmin
       .from('attendance')
-      .select('Sesi, nama_peserta, role')
+      .select('Sesi, nama_peserta, role, created_at')
       .eq('nim_nip', cleanNimNip);
 
     if (error) {
@@ -74,18 +74,28 @@ export async function POST(req: Request) {
       });
     }
 
-    const hasPagi = records.some((r) => r.Sesi === 'Pagi');
-    const hasSiang = records.some((r) => r.Sesi === 'Siang');
-    const firstRecord = records[0];
+    const pagiRecord = records.find((r) => r.Sesi === 'Pagi');
+    const siangRecord = records.find((r) => r.Sesi === 'Siang');
+    const firstRecord = pagiRecord || siangRecord || records[0];
+
+    const pagiWaktu = pagiRecord?.created_at
+      ? new Date(pagiRecord.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA'
+      : undefined;
+
+    const siangWaktu = siangRecord?.created_at
+      ? new Date(siangRecord.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA'
+      : undefined;
 
     return NextResponse.json({
       found: true,
       nim_nip: cleanNimNip,
       nama: firstRecord.nama_peserta || '',
       role: firstRecord.role || '',
-      hasPagi,
-      hasSiang,
-      eligibleForCertificate: hasPagi && hasSiang,
+      hasPagi: !!pagiRecord,
+      hasSiang: !!siangRecord,
+      pagiWaktu,
+      siangWaktu,
+      eligibleForCertificate: !!pagiRecord && !!siangRecord,
     });
   } catch (err) {
     console.error('API Check Error:', err);

@@ -22,10 +22,52 @@ import {
 import { getSessionStatus, SESSION_SCHEDULES, SessionStatus } from '@/lib/schedule';
 import QRCodeWidget from './QRCodeWidget';
 
+export interface AttendanceRecord {
+  nama: string;
+  nimNip: string;
+  sesi: string;
+  waktu: string;
+  role?: string;
+}
+
+export const ROLES_LIST = [
+  { value: 'panitia_mahasiswa', label: 'Panitia Mahasiswa', group: 'Panitia' },
+  { value: 'panitia_dosen', label: 'Panitia Dosen', group: 'Panitia' },
+  { value: 'peserta_mahasiswa', label: 'Peserta Mahasiswa', group: 'Peserta' },
+  { value: 'peserta_tendik', label: 'Peserta Tendik', group: 'Peserta' },
+  { value: 'peserta_dosen', label: 'Peserta Dosen', group: 'Peserta' },
+] as const;
+
+export function getRoleLabel(roleValue?: string): string {
+  if (!roleValue) return 'Peserta Mahasiswa';
+  const found = ROLES_LIST.find((r) => r.value === roleValue);
+  if (found) return found.label;
+  if (
+    roleValue === 'Panitia Mahasiswa' ||
+    roleValue === 'Panitia Dosen' ||
+    roleValue === 'Peserta Mahasiswa' ||
+    roleValue === 'Peserta Tendik' ||
+    roleValue === 'Peserta Dosen'
+  ) {
+    return roleValue;
+  }
+  // Backwards compatibility for single-word / legacy roles
+  const lower = roleValue.toLowerCase();
+  if (lower === 'panitia') return 'Panitia';
+  if (lower === 'peserta') return 'Peserta';
+  if (lower === 'dosen') return 'Dosen';
+  if (lower === 'tendik') return 'Tendik';
+  if (lower === 'mahasiswa') return 'Mahasiswa';
+
+  return roleValue
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 // Dual-layer storage helpers (LocalStorage + Cookie fallback)
 function saveLocalAttendanceRecord(
   sesi: number,
-  record: { nama: string; nimNip: string; sesi: string; waktu: string }
+  record: AttendanceRecord
 ) {
   if (typeof window === 'undefined') return;
   const recordStr = JSON.stringify(record);
@@ -49,7 +91,7 @@ function saveLocalAttendanceRecord(
 
 function getLocalAttendanceRecord(
   sesi: number
-): { nama: string; nimNip: string; sesi: string; waktu: string } | null {
+): AttendanceRecord | null {
   if (typeof window === 'undefined') return null;
 
   // Layer 1: LocalStorage (Fastest)
@@ -93,18 +135,21 @@ export default function AttendanceForm() {
     nimNip: string;
     sesi: string;
     waktu: string;
+    role?: string;
+    roleLabel?: string;
     isEligible: boolean;
     message: string;
     isAlreadyRecorded?: boolean;
+    hasPagi?: boolean;
+    hasSiang?: boolean;
   } | null>(null);
 
+  // States for tracking attendance status of both sessions on this device
+  const [hasLocalPagi, setHasLocalPagi] = useState(false);
+  const [hasLocalSiang, setHasLocalSiang] = useState(false);
+
   // States for local device history (reassurance on page reload)
-  const [localHistory, setLocalHistory] = useState<{
-    nama: string;
-    nimNip: string;
-    sesi: string;
-    waktu: string;
-  } | null>(null);
+  const [localHistory, setLocalHistory] = useState<AttendanceRecord | null>(null);
 
   // States for Quick Attendance Status Checker Modal
   const [showCheckModal, setShowCheckModal] = useState(false);
@@ -202,11 +247,78 @@ export default function AttendanceForm() {
     return () => clearInterval(interval);
   }, []);
 
+  // Self-heal and sync attendance history from database into local device storage
+  const syncStatusFromDatabase = async (inputNim: string) => {
+    const clean = inputNim.trim();
+    if (!clean || clean.length < 8) return null;
+
+    try {
+      const res = await fetch('/api/attendance/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nim_nip: clean }),
+      });
+      if (!res.ok) return null;
+      const result = await res.json();
+      if (result.found) {
+        if (result.hasPagi) {
+          saveLocalAttendanceRecord(1, {
+            nama: result.nama || namaPeserta || 'Peserta',
+            nimNip: clean,
+            sesi: 'Pagi',
+            waktu: result.pagiWaktu || 'Pagi Hari Ini',
+            role: result.role,
+          });
+          setHasLocalPagi(true);
+        }
+        if (result.hasSiang) {
+          saveLocalAttendanceRecord(2, {
+            nama: result.nama || namaPeserta || 'Peserta',
+            nimNip: clean,
+            sesi: 'Siang',
+            waktu: result.siangWaktu || 'Siang Hari Ini',
+            role: result.role,
+          });
+          setHasLocalSiang(true);
+        }
+        if (result.role && ['panitia_mahasiswa', 'panitia_dosen', 'peserta_mahasiswa', 'peserta_tendik', 'peserta_dosen'].includes(result.role)) {
+          setRole(result.role as any);
+        }
+        if (result.nama && !namaPeserta && role !== 'panitia_mahasiswa' && role !== 'panitia_dosen') {
+          setNamaPeserta(result.nama);
+        }
+        try {
+          localStorage.setItem('absen_last_nim', clean);
+        } catch {}
+        const currentRec = getLocalAttendanceRecord(hariAbsen);
+        setLocalHistory(currentRec);
+        return result;
+      }
+    } catch {
+      // Silent in background
+    }
+    return null;
+  };
+
   // Load local device history on session change / mount (Dual-layer: LocalStorage + Cookie)
   useEffect(() => {
     const record = getLocalAttendanceRecord(hariAbsen);
     setLocalHistory(record);
-  }, [hariAbsen]);
+    const pagiExists = !!getLocalAttendanceRecord(1);
+    const siangExists = !!getLocalAttendanceRecord(2);
+    setHasLocalPagi(pagiExists);
+    setHasLocalSiang(siangExists);
+
+    // Auto-sync for attendees who attended Sesi 1 earlier this morning
+    if (!pagiExists && typeof window !== 'undefined') {
+      try {
+        const lastNim = localStorage.getItem('absen_last_nim');
+        if (lastNim && lastNim.length >= 8) {
+          syncStatusFromDatabase(lastNim);
+        }
+      } catch {}
+    }
+  }, [hariAbsen, showSuccessModal]);
 
   useEffect(() => {
     // Initialize FingerprintJS with Safari / iOS anti-tracking fallback
@@ -343,6 +455,12 @@ export default function AttendanceForm() {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
+  const handleNimBlur = () => {
+    if (nimNip && nimNip.trim().length >= 8) {
+      syncStatusFromDatabase(nimNip);
+    }
+  };
+
   const handleCheckStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = checkNimNip.trim();
@@ -362,6 +480,41 @@ export default function AttendanceForm() {
         throw new Error(result.error || 'Gagal memeriksa status');
       }
       setCheckResult(result);
+
+      // Self-heal and restore local proof of attendance from database record
+      if (result.found) {
+        if (result.hasPagi) {
+          saveLocalAttendanceRecord(1, {
+            nama: result.nama || 'Peserta',
+            nimNip: clean,
+            sesi: 'Pagi',
+            waktu: result.pagiWaktu || 'Pagi Hari Ini',
+            role: result.role,
+          });
+          setHasLocalPagi(true);
+        }
+        if (result.hasSiang) {
+          saveLocalAttendanceRecord(2, {
+            nama: result.nama || 'Peserta',
+            nimNip: clean,
+            sesi: 'Siang',
+            waktu: result.siangWaktu || 'Siang Hari Ini',
+            role: result.role,
+          });
+          setHasLocalSiang(true);
+        }
+        if (result.role && ['panitia_mahasiswa', 'panitia_dosen', 'peserta_mahasiswa', 'peserta_tendik', 'peserta_dosen'].includes(result.role)) {
+          setRole(result.role as any);
+        }
+        try {
+          localStorage.setItem('absen_last_nim', clean);
+        } catch {}
+        const currentRec = getLocalAttendanceRecord(hariAbsen);
+        setLocalHistory(currentRec);
+        if (result.nama && !namaPeserta && role !== 'panitia_mahasiswa' && role !== 'panitia_dosen') {
+          setNamaPeserta(result.nama);
+        }
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Gagal memeriksa status';
       setCheckResult({ found: false, message: msg });
@@ -471,27 +624,54 @@ export default function AttendanceForm() {
         // Jika server mendeteksi sudah tercatat absen sebelumnya (misal akibat koneksi sempat lag atau submit ulang)
         if (data.already_attended || data.error?.toLowerCase().includes('sudah tercatat absen') || data.error?.toLowerCase().includes('ganda')) {
           const sesiText = data.sesi || (hariAbsen === 1 ? 'Pagi' : 'Siang');
-          const finalName = namaPeserta || 'Peserta';
+          const finalName = data.nama_peserta || namaPeserta || 'Peserta';
+          const resolvedRole = data.role || role;
+          const resolvedRoleLabel = getRoleLabel(resolvedRole);
           const currentTimeFormatted = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA';
 
+          const localPagi = !!getLocalAttendanceRecord(1);
+          const localSiang = !!getLocalAttendanceRecord(2);
+          const hasPagi = sesiText === 'Pagi' ? true : (data.eligibleForCertificate ? true : localPagi);
+          const hasSiang = sesiText === 'Siang' ? true : localSiang;
+          const isEligible = !!data.eligibleForCertificate || (hasPagi && hasSiang);
+
           // Simpan riwayat perangkat lokal (Dual-layer: LocalStorage + Cookie)
-          const hist = {
+          const hist: AttendanceRecord = {
             nama: finalName,
             nimNip: cleanNimNip,
             sesi: sesiText,
             waktu: currentTimeFormatted,
+            role: resolvedRole,
           };
           saveLocalAttendanceRecord(hariAbsen, hist);
+          if (isEligible && !getLocalAttendanceRecord(1)) {
+            saveLocalAttendanceRecord(1, {
+              nama: finalName,
+              nimNip: cleanNimNip,
+              sesi: 'Pagi',
+              waktu: 'Selesai Pagi Hari Ini ✓',
+              role: resolvedRole,
+            });
+          }
+          try {
+            localStorage.setItem('absen_last_nim', cleanNimNip);
+          } catch {}
           setLocalHistory(hist);
+          setHasLocalPagi(!!getLocalAttendanceRecord(1));
+          setHasLocalSiang(!!getLocalAttendanceRecord(2));
 
           setSuccessModalData({
             nama: finalName,
             nimNip: cleanNimNip,
             sesi: sesiText,
             waktu: 'Telah Diverifikasi di Database',
-            isEligible: false,
+            role: resolvedRole,
+            roleLabel: resolvedRoleLabel,
+            isEligible: isEligible,
             message: `Data Anda untuk Sesi ${sesiText} SUDAH TERCATAT RESMI di server. Anda tidak perlu mengulang absensi.`,
             isAlreadyRecorded: true,
+            hasPagi,
+            hasSiang,
           });
           setShowSuccessModal(true);
           setMessage({
@@ -514,19 +694,43 @@ export default function AttendanceForm() {
       if (data.nama_peserta) {
         setNamaPeserta(data.nama_peserta);
       }
-      setEligibleForCertificate(data.eligibleForCertificate);
+      const resolvedRole = data.role || role;
+      const resolvedRoleLabel = getRoleLabel(resolvedRole);
+
+      const localPagi = !!getLocalAttendanceRecord(1);
+      const localSiang = !!getLocalAttendanceRecord(2);
+      const hasPagi = hariAbsen === 1 ? true : (data.eligibleForCertificate ? true : localPagi);
+      const hasSiang = hariAbsen === 2 ? true : localSiang;
+      const isEligible = !!data.eligibleForCertificate || (hasPagi && hasSiang);
+
+      setEligibleForCertificate(isEligible);
 
       const currentTimeFormatted = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WITA';
 
       // Simpan riwayat perangkat lokal (Dual-layer: LocalStorage + Cookie)
-      const hist = {
+      const hist: AttendanceRecord = {
         nama: finalName,
         nimNip: cleanNimNip,
         sesi: hariAbsen === 1 ? 'Pagi' : 'Siang',
         waktu: currentTimeFormatted,
+        role: resolvedRole,
       };
       saveLocalAttendanceRecord(hariAbsen, hist);
+      if (isEligible && !getLocalAttendanceRecord(1)) {
+        saveLocalAttendanceRecord(1, {
+          nama: finalName,
+          nimNip: cleanNimNip,
+          sesi: 'Pagi',
+          waktu: 'Selesai Pagi Hari Ini ✓',
+          role: resolvedRole,
+        });
+      }
+      try {
+        localStorage.setItem('absen_last_nim', cleanNimNip);
+      } catch {}
       setLocalHistory(hist);
+      setHasLocalPagi(!!getLocalAttendanceRecord(1));
+      setHasLocalSiang(!!getLocalAttendanceRecord(2));
 
       // Tampilkan popup sukses otomatis yang besar dan jelas
       setSuccessModalData({
@@ -534,9 +738,13 @@ export default function AttendanceForm() {
         nimNip: cleanNimNip,
         sesi: hariAbsen === 1 ? 'Pagi' : 'Siang',
         waktu: currentTimeFormatted,
-        isEligible: !!data.eligibleForCertificate,
+        role: resolvedRole,
+        roleLabel: resolvedRoleLabel,
+        isEligible: isEligible,
         message: data.message || 'Absensi berhasil disimpan!',
         isAlreadyRecorded: false,
+        hasPagi,
+        hasSiang,
       });
       setShowSuccessModal(true);
     } catch (error: unknown) {
@@ -724,21 +932,33 @@ export default function AttendanceForm() {
                   Perangkat Ini Sudah Absen Sesi {localHistory.sesi}
                 </div>
                 <div className="text-[11px] sm:text-xs text-emerald-800/85 dark:text-emerald-300/80 mt-0.5 leading-relaxed">
-                  Tercatat untuk <strong className="font-bold">{localHistory.nama}</strong> ({localHistory.nimNip}) pukul {localHistory.waktu}.
+                  Tercatat sebagai <strong className="font-semibold">{getRoleLabel(localHistory.role || role)}</strong> untuk <strong className="font-bold">{localHistory.nama}</strong> ({localHistory.nimNip}) pukul {localHistory.waktu}.
                 </div>
               </div>
             </div>
             <button
               type="button"
               onClick={() => {
+                const localPagi = !!getLocalAttendanceRecord(1);
+                const localSiang = !!getLocalAttendanceRecord(2);
+                const hasPagi = localHistory.sesi === 'Pagi' || localPagi;
+                const hasSiang = localHistory.sesi === 'Siang' || localSiang;
+                const isEligible = hasPagi && hasSiang;
+                const resolvedRole = localHistory.role || role;
+                const resolvedRoleLabel = getRoleLabel(resolvedRole);
+
                 setSuccessModalData({
                   nama: localHistory.nama,
                   nimNip: localHistory.nimNip,
                   sesi: localHistory.sesi,
                   waktu: localHistory.waktu,
-                  isEligible: false,
+                  role: resolvedRole,
+                  roleLabel: resolvedRoleLabel,
+                  isEligible: isEligible,
                   message: 'Bukti riwayat absensi pada perangkat ini.',
                   isAlreadyRecorded: true,
+                  hasPagi,
+                  hasSiang,
                 });
                 setShowSuccessModal(true);
               }}
@@ -746,6 +966,21 @@ export default function AttendanceForm() {
             >
               Lihat Bukti
             </button>
+          </div>
+        )}
+
+        {/* Sesi Siang Helper Banner: Muncul jika di HP ini Sesi Pagi sudah tercatat dan saat ini membuka Sesi Siang yang belum absen */}
+        {hariAbsen === 2 && hasLocalPagi && !localHistory && (
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-950/30 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs sm:text-sm flex items-start space-x-2.5 shadow-xs">
+            <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold text-amber-950 dark:text-amber-100">
+                Absensi Sesi Pagi Anda Telah Selesai ✓
+              </div>
+              <div className="text-[11px] sm:text-xs text-amber-900/85 dark:text-amber-200/80 mt-0.5 leading-relaxed">
+                Silakan lakukan absensi <strong>Sesi Siang</strong> di bawah ini menggunakan perangkat yang sama untuk melengkapi kehadiran Anda dan mendapatkan E-Sertifikat resmi.
+              </div>
+            </div>
           </div>
         )}
 
@@ -932,6 +1167,7 @@ export default function AttendanceForm() {
               onChange={(e) => {
                 setNimNip(e.target.value.replace(/\D/g, ''));
               }}
+              onBlur={handleNimBlur}
               className="w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-[#decbc0] dark:border-[#4f382c] focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] transition-all shadow-xs touch-manipulation font-mono tracking-wider"
               placeholder={isDosenRole ? 'Misal: 1981100720081210001' : 'Misal: 1234567890'}
               autoComplete="off"
@@ -964,14 +1200,17 @@ export default function AttendanceForm() {
                   </span>
                 </div>
                 <span
-                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${status1.isOpen
-                    ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                    : hariAbsen === 1
-                      ? 'bg-black/20 text-white border border-white/20'
-                      : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
-                    }`}
+                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${
+                    hasLocalPagi
+                      ? 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-500/40'
+                      : status1.isOpen
+                        ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                        : hariAbsen === 1
+                          ? 'bg-black/20 text-white border border-white/20'
+                          : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
+                  }`}
                 >
-                  {status1.isOpen ? 'BUKA' : status1.message}
+                  {hasLocalPagi ? '✓ Sudah Absen' : status1.isOpen ? 'BUKA' : status1.message}
                 </span>
               </button>
 
@@ -995,14 +1234,17 @@ export default function AttendanceForm() {
                   </span>
                 </div>
                 <span
-                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${status2.isOpen
-                    ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                    : hariAbsen === 2
-                      ? 'bg-black/20 text-white border border-white/20'
-                      : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
-                    }`}
+                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${
+                    hasLocalSiang
+                      ? 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-500/40'
+                      : status2.isOpen
+                        ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                        : hariAbsen === 2
+                          ? 'bg-black/20 text-white border border-white/20'
+                          : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
+                  }`}
                 >
-                  {status2.isOpen ? 'BUKA' : status2.message}
+                  {hasLocalSiang ? '✓ Sudah Absen' : status2.isOpen ? 'BUKA' : status2.message}
                 </span>
               </button>
             </div>
@@ -1105,9 +1347,11 @@ export default function AttendanceForm() {
           <div className="bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl sm:rounded-[32px] shadow-2xl w-full max-w-md sm:max-w-lg overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             {/* Header Ribbon / Banner */}
             <div className={`relative px-6 pt-7 pb-6 text-white text-center flex flex-col items-center justify-center overflow-hidden flex-shrink-0 ${
-              successModalData?.isAlreadyRecorded
-                ? 'bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700'
-                : 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700'
+              successModalData?.isEligible
+                ? 'bg-gradient-to-br from-amber-500 via-orange-600 to-amber-700'
+                : successModalData?.isAlreadyRecorded
+                  ? 'bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700'
+                  : 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700'
             }`}>
               {/* Close Button X */}
               <button
@@ -1121,9 +1365,15 @@ export default function AttendanceForm() {
 
               {/* Big Animated Icon */}
               <div className={`h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white flex items-center justify-center shadow-xl mb-3 ring-8 ring-white/20 ${
-                successModalData?.isAlreadyRecorded ? 'text-blue-600 shadow-blue-950/20' : 'text-emerald-600 shadow-emerald-950/20'
+                successModalData?.isEligible
+                  ? 'text-amber-600 shadow-amber-950/20'
+                  : successModalData?.isAlreadyRecorded
+                    ? 'text-blue-600 shadow-blue-950/20'
+                    : 'text-emerald-600 shadow-emerald-950/20'
               }`}>
-                {successModalData?.isAlreadyRecorded ? (
+                {successModalData?.isEligible ? (
+                  <Award className="w-10 h-10 sm:w-12 sm:h-12 text-amber-600 stroke-[2.5]" />
+                ) : successModalData?.isAlreadyRecorded ? (
                   <ShieldCheck className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 stroke-[2.5]" />
                 ) : (
                   <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-emerald-600 stroke-[2.5]" />
@@ -1131,20 +1381,158 @@ export default function AttendanceForm() {
               </div>
 
               <span className="text-[10px] sm:text-[11px] uppercase font-black tracking-widest text-white/90 bg-white/20 px-3 py-0.5 rounded-full mb-1">
-                {successModalData?.isAlreadyRecorded ? 'Telah Terdaftar di Database' : 'Tercatat Resmi'}
+                {successModalData?.isEligible
+                  ? 'Kedua Sesi Selesai (100%)'
+                  : successModalData?.isAlreadyRecorded
+                    ? 'Telah Terdaftar di Database'
+                    : successModalData?.sesi === 'Pagi'
+                      ? 'Tahap 1 / 2 Selesai'
+                      : 'Sesi Siang Tercatat'}
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                {successModalData?.isAlreadyRecorded ? 'Sudah Tercatat Absen! 🛡️' : 'Absensi Berhasil! 🎉'}
+                {successModalData?.isEligible
+                  ? 'Kedua Sesi Lengkap! 🎓'
+                  : successModalData?.isAlreadyRecorded
+                    ? 'Sudah Tercatat Absen! 🛡️'
+                    : successModalData?.sesi === 'Pagi'
+                      ? 'Absensi Sesi Pagi Berhasil! 🌅'
+                      : 'Absensi Sesi Siang Berhasil! ☀️'}
               </h2>
               <p className="text-white/90 text-xs sm:text-sm mt-1 max-w-xs font-medium leading-relaxed">
-                {successModalData?.isAlreadyRecorded
-                  ? 'Data Anda untuk sesi ini sudah aman tersimpan di database. Tidak perlu melakukan absensi ulang.'
-                  : 'Kehadiran Anda telah sukses diverifikasi dan disimpan ke database.'}
+                {successModalData?.isEligible
+                  ? 'Selamat! Anda telah menyelesaikan seluruh rangkaian absensi dan berhak atas E-Sertifikat resmi.'
+                  : successModalData?.isAlreadyRecorded
+                    ? `Data kehadiran Anda untuk Sesi ${successModalData?.sesi} sudah aman tersimpan di database.`
+                    : successModalData?.sesi === 'Pagi'
+                      ? 'Kehadiran Sesi Pagi telah disimpan. Jangan lupa absen kembali pada Sesi Siang.'
+                      : 'Kehadiran Anda telah sukses diverifikasi dan disimpan ke database.'}
               </p>
             </div>
 
             {/* Scrollable Content Body */}
             <div className="p-5 sm:p-6 overflow-y-auto flex flex-col space-y-3.5">
+              {/* Status Tahapan Absensi: Sesi Pagi vs Sesi Siang */}
+              <div className="bg-[#efe7e2] dark:bg-[#34241d] rounded-2xl p-4 border border-[#decbc0] dark:border-[#4f382c] space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
+                    Tahapan Kehadiran
+                  </span>
+                  <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                    successModalData?.isEligible
+                      ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                      : 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30'
+                  }`}>
+                    {successModalData?.isEligible ? '✓ 100% Lengkap (2/2 Sesi)' : '⏳ 50% Selesai (1/2 Sesi)'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Card Sesi Pagi */}
+                  <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+                    (successModalData?.sesi === 'Pagi' || successModalData?.hasPagi || successModalData?.isEligible)
+                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200'
+                      : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
+                  }`}>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider opacity-75">Sesi 1 (Pagi)</div>
+                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">08:00 - 11:30</div>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-emerald-500/20 text-xs font-bold">
+                      {(successModalData?.sesi === 'Pagi' || successModalData?.hasPagi || successModalData?.isEligible) ? (
+                        <span className="text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                          ✓ Selesai
+                        </span>
+                      ) : (
+                        <span className="text-zinc-500 flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                          Belum Absen
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card Sesi Siang */}
+                  <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+                    (successModalData?.isEligible || (successModalData?.sesi === 'Siang' && successModalData?.hasSiang))
+                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200'
+                      : (successModalData?.sesi === 'Pagi' || successModalData?.hasPagi)
+                        ? 'bg-amber-500/15 border-amber-500/50 text-amber-950 dark:text-amber-200'
+                        : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
+                  }`}>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider opacity-75">Sesi 2 (Siang)</div>
+                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">13:00 - 16:00</div>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-amber-500/30 text-xs font-bold">
+                      {(successModalData?.isEligible || (successModalData?.sesi === 'Siang' && successModalData?.hasSiang)) ? (
+                        <span className="text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                          ✓ Selesai
+                        </span>
+                      ) : (successModalData?.sesi === 'Pagi' || successModalData?.hasPagi) ? (
+                        <span className="text-amber-700 dark:text-amber-300 flex items-center gap-1 animate-pulse">
+                          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                          ⏳ Wajib Absen
+                        </span>
+                      ) : (
+                        <span className="text-zinc-500 flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                          Belum Absen
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contextual Notice Banner: Siang Requirement OR 100% Celebration */}
+              {successModalData?.isEligible ? (
+                <div className="p-4 bg-gradient-to-r from-amber-500/25 via-orange-500/25 to-amber-500/25 border-2 border-amber-500/60 rounded-2xl flex items-start space-x-3 text-left shadow-sm">
+                  <Award className="w-7 h-7 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="font-extrabold text-sm sm:text-base text-amber-950 dark:text-amber-200">
+                      Kedua Sesi Lengkap (100%)! 🎉
+                    </h4>
+                    <p className="text-xs sm:text-[13px] text-amber-900/90 dark:text-amber-100/90 leading-relaxed">
+                      Selamat! Anda telah menyelesaikan <strong>Sesi Pagi</strong> dan <strong>Sesi Siang</strong>. Kehadiran Anda telah terverifikasi secara resmi untuk penerbitan E-Sertifikat.
+                    </p>
+                    <p className="text-xs font-bold text-amber-800 dark:text-amber-300 pt-0.5">
+                      Silakan klik tombol di bawah untuk membuka Portal Sertifikat dan mengunduh sertifikat Anda.
+                    </p>
+                  </div>
+                </div>
+              ) : successModalData?.sesi === 'Pagi' ? (
+                <div className="p-4 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 border-2 border-amber-500/60 rounded-2xl flex items-start space-x-3 text-left">
+                  <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="font-extrabold text-sm sm:text-base text-amber-950 dark:text-amber-200">
+                      PENTING: Wajib Absensi Sesi Siang Lagi! ⚠️
+                    </h4>
+                    <p className="text-xs sm:text-[13px] text-amber-900/90 dark:text-amber-100/90 leading-relaxed">
+                      Anda baru menyelesaikan <strong>Sesi Pagi</strong>. Sesuai ketentuan panitia, <strong>E-Sertifikat Resmi</strong> hanya diberikan jika Anda melengkapi kehadiran pada <strong>KEDUA SESI (Pagi & Siang)</strong>.
+                    </p>
+                    <div className="pt-1.5 flex flex-col gap-1 text-xs text-amber-950 dark:text-amber-200">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                        <span>Jadwal Sesi Siang: Pukul 13:00 - 16:00 WITA</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-semibold opacity-90">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                        <span>Gunakan HP dan link yang sama untuk absensi penutup nanti siang.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-blue-500/10 dark:bg-blue-950/30 border border-blue-500/30 rounded-2xl flex items-start space-x-2.5 text-left text-xs text-blue-900 dark:text-blue-200">
+                  <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <strong className="font-bold">Catatan Sertifikat:</strong> Kehadiran Sesi Siang berhasil dicatat. Sesi Pagi belum terdeteksi. Sesuai ketentuan, sertifikat membutuhkan kehadiran pada kedua sesi. Hubungi panitia jika Anda telah hadir di pagi hari.
+                  </div>
+                </div>
+              )}
+
               {/* Summary Details Card */}
               <div className="bg-[#efe7e2] dark:bg-[#34241d] rounded-2xl p-4 border border-[#decbc0] dark:border-[#4f382c] space-y-2.5 text-sm">
                 <div className="flex justify-between items-center pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
@@ -1160,6 +1548,15 @@ export default function AttendanceForm() {
                   </span>
                 </div>
 
+                <div className="flex justify-between items-center pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
+                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
+                    Status / Peran
+                  </span>
+                  <span className="font-bold text-xs sm:text-sm text-[#2c1e18] dark:text-[#f5ece7] px-2.5 py-0.5 rounded-lg bg-[#decbc0]/50 dark:bg-[#4f382c]/50 border border-[#decbc0]/70 dark:border-[#4f382c]/70 shadow-xs">
+                    {successModalData?.roleLabel || getRoleLabel(successModalData?.role || role)}
+                  </span>
+                </div>
+
                 <div className="flex justify-between items-start pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
                   <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
                     Nama Lengkap
@@ -1171,7 +1568,11 @@ export default function AttendanceForm() {
 
                 <div className="flex justify-between items-center pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
                   <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
-                    {isDosenRole ? 'NIP' : 'NIM'}
+                    {(() => {
+                      const modalRole = successModalData?.role || role;
+                      const isModalDosen = modalRole === 'panitia_dosen' || modalRole === 'peserta_dosen' || modalRole === 'peserta_tendik';
+                      return isModalDosen ? 'NIP' : 'NIM';
+                    })()}
                   </span>
                   <span className="font-mono font-bold text-sm sm:text-base text-[#2c1e18] dark:text-[#f5ece7]">
                     {successModalData?.nimNip}
@@ -1201,59 +1602,35 @@ export default function AttendanceForm() {
                 </div>
               </div>
 
-              {/* Certificate Information Card */}
-              {successModalData?.isEligible ? (
-                <div className="p-4 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border border-amber-500/40 rounded-2xl flex items-start space-x-3 text-left">
-                  <Award className="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-sm text-[#3d2417] dark:text-[#fde68a]">
-                      E-Sertifikat Siap Diunduh! 🎉
-                    </h4>
-                    <p className="text-xs text-[#69422f] dark:text-[#cbd5e1] mt-0.5 leading-relaxed">
-                      Selamat, Anda telah melengkapi seluruh sesi absensi. Sertifikat resmi dapat langsung diunduh melalui Portal Sertifikat.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3.5 bg-amber-500/10 dark:bg-amber-950/30 border border-amber-500/30 rounded-2xl flex items-start space-x-2.5 text-left text-xs text-amber-900 dark:text-amber-200">
-                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                  <span className="leading-relaxed">
-                    {successModalData?.sesi === 'Pagi' ? (
-                      <>
-                        Harap melakukan absensi kembali pada <strong>Sesi Siang (13:00 - 16:00 WITA)</strong> untuk melengkapi kehadiran dan klaim E-Sertifikat.
-                      </>
-                    ) : (
-                      <>
-                        Terima kasih atas kehadiran Anda. Pastikan Anda juga telah absen di Sesi Pagi agar berhak mendapatkan E-Sertifikat resmi.
-                      </>
-                    )}
-                  </span>
-                </div>
-              )}
-
               {/* Action Buttons */}
               <div className="flex flex-col gap-2.5 pt-1">
-                {successModalData?.isEligible && (
-                  <a
-                    href="/sertifikat"
-                    className="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center space-x-2 text-center text-sm sm:text-base touch-manipulation"
+                {successModalData?.isEligible ? (
+                  <>
+                    <a
+                      href="/sertifikat"
+                      className="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center space-x-2 text-center text-sm sm:text-base touch-manipulation cursor-pointer"
+                    >
+                      <Award className="w-5 h-5 flex-shrink-0" />
+                      <span>Klaim E-Sertifikat Sekarang</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setShowSuccessModal(false)}
+                      className="w-full py-3.5 px-4 rounded-xl font-bold bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23] border border-[#decbc0] dark:border-[#4f382c] transition-all active:scale-[0.98] text-sm sm:text-base touch-manipulation cursor-pointer"
+                    >
+                      Tutup Dialog
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowSuccessModal(false)}
+                    className="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 active:scale-[0.98] transition-all shadow-lg shadow-emerald-600/25 text-sm sm:text-base touch-manipulation cursor-pointer flex items-center justify-center space-x-2"
                   >
-                    <Award className="w-5 h-5 flex-shrink-0" />
-                    <span>Klaim E-Sertifikat Sekarang</span>
-                  </a>
+                    <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                    <span>Saya Mengerti, Akan Absen Siang Lagi</span>
+                  </button>
                 )}
-
-                <button
-                  type="button"
-                  onClick={() => setShowSuccessModal(false)}
-                  className={`w-full py-3.5 px-4 rounded-xl font-bold transition-all active:scale-[0.98] text-sm sm:text-base touch-manipulation cursor-pointer ${
-                    successModalData?.isEligible
-                      ? 'bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23] border border-[#decbc0] dark:border-[#4f382c]'
-                      : 'text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-600/25'
-                  }`}
-                >
-                  {successModalData?.isEligible ? 'Tutup Dialog' : 'Selesai & Tutup'}
-                </button>
               </div>
             </div>
           </div>
@@ -1332,8 +1709,15 @@ export default function AttendanceForm() {
                         <div className="font-extrabold text-base text-[#2c1e18] dark:text-[#f5ece7] mt-0.5">
                           {checkResult.nama}
                         </div>
-                        <div className="text-xs font-mono text-[#7e695d] dark:text-[#a8968c]">
-                          NIM/NIP: {checkResult.nim_nip}
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <span className="text-xs font-mono text-[#7e695d] dark:text-[#a8968c]">
+                            NIM/NIP: {checkResult.nim_nip}
+                          </span>
+                          {checkResult.role && (
+                            <span className="text-[11px] font-bold text-[#2c1e18] dark:text-[#f5ece7] px-2 py-0.5 rounded bg-[#decbc0]/50 dark:bg-[#4f382c]/50 border border-[#decbc0]/70 dark:border-[#4f382c]/70">
+                              {getRoleLabel(checkResult.role)}
+                            </span>
+                          )}
                         </div>
                       </div>
 
