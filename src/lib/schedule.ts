@@ -11,15 +11,15 @@ export const SESSION_SCHEDULES: Record<1 | 2, SessionConfig> = {
     id: 1,
     name: 'Pagi',
     label: 'Sesi Pagi',
-    startTime: process.env.NEXT_PUBLIC_SESSION_1_START || '08:00',
+    startTime: process.env.NEXT_PUBLIC_SESSION_1_START || '06:00',
     endTime: process.env.NEXT_PUBLIC_SESSION_1_END || '10:00',
   },
   2: {
     id: 2,
     name: 'Siang',
     label: 'Sesi Siang',
-    startTime: process.env.NEXT_PUBLIC_SESSION_2_START || '12:00',
-    endTime: process.env.NEXT_PUBLIC_SESSION_2_END || '14:00',
+    startTime: process.env.NEXT_PUBLIC_SESSION_2_START || '10:00',
+    endTime: process.env.NEXT_PUBLIC_SESSION_2_END || '13:00',
   },
 };
 

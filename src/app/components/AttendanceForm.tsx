@@ -100,7 +100,7 @@ function getLocalAttendanceRecord(
     if (saved) {
       return JSON.parse(saved);
     }
-  } catch {}
+  } catch { }
 
   // Layer 2: Cookie fallback (In case LocalStorage was purged by iOS Safari private mode or browser cleaning)
   try {
@@ -110,10 +110,10 @@ function getLocalAttendanceRecord(
       // Self-heal: sync back to LocalStorage
       try {
         localStorage.setItem('absen_history_sesi_' + sesi, JSON.stringify(parsed));
-      } catch {}
+      } catch { }
       return parsed;
     }
-  } catch {}
+  } catch { }
 
   return null;
 }
@@ -227,7 +227,14 @@ export default function AttendanceForm() {
     // Update live clock & session status
     const updateTick = () => {
       const now = new Date();
-      setCurrentTime(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setCurrentTime(
+        now.toLocaleTimeString('id-ID', {
+          timeZone: 'Asia/Makassar',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      );
 
       const s1 = getSessionStatus(1, now);
       const s2 = getSessionStatus(2, now);
@@ -289,7 +296,7 @@ export default function AttendanceForm() {
         }
         try {
           localStorage.setItem('absen_last_nim', clean);
-        } catch {}
+        } catch { }
         const currentRec = getLocalAttendanceRecord(hariAbsen);
         setLocalHistory(currentRec);
         return result;
@@ -316,7 +323,7 @@ export default function AttendanceForm() {
         if (lastNim && lastNim.length >= 8) {
           syncStatusFromDatabase(lastNim);
         }
-      } catch {}
+      } catch { }
     }
   }, [hariAbsen, showSuccessModal]);
 
@@ -508,7 +515,7 @@ export default function AttendanceForm() {
         }
         try {
           localStorage.setItem('absen_last_nim', clean);
-        } catch {}
+        } catch { }
         const currentRec = getLocalAttendanceRecord(hariAbsen);
         setLocalHistory(currentRec);
         if (result.nama && !namaPeserta && role !== 'panitia_mahasiswa' && role !== 'panitia_dosen') {
@@ -627,7 +634,7 @@ export default function AttendanceForm() {
           const finalName = data.nama_peserta || namaPeserta || 'Peserta';
           const resolvedRole = data.role || role;
           const resolvedRoleLabel = getRoleLabel(resolvedRole);
-          const currentTimeFormatted = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA';
+          const currentTimeFormatted = new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit' }) + ' WITA';
 
           const localPagi = !!getLocalAttendanceRecord(1);
           const localSiang = !!getLocalAttendanceRecord(2);
@@ -655,7 +662,7 @@ export default function AttendanceForm() {
           }
           try {
             localStorage.setItem('absen_last_nim', cleanNimNip);
-          } catch {}
+          } catch { }
           setLocalHistory(hist);
           setHasLocalPagi(!!getLocalAttendanceRecord(1));
           setHasLocalSiang(!!getLocalAttendanceRecord(2));
@@ -705,7 +712,7 @@ export default function AttendanceForm() {
 
       setEligibleForCertificate(isEligible);
 
-      const currentTimeFormatted = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WITA';
+      const currentTimeFormatted = new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WITA';
 
       // Simpan riwayat perangkat lokal (Dual-layer: LocalStorage + Cookie)
       const hist: AttendanceRecord = {
@@ -727,7 +734,7 @@ export default function AttendanceForm() {
       }
       try {
         localStorage.setItem('absen_last_nim', cleanNimNip);
-      } catch {}
+      } catch { }
       setLocalHistory(hist);
       setHasLocalPagi(!!getLocalAttendanceRecord(1));
       setHasLocalSiang(!!getLocalAttendanceRecord(2));
@@ -1200,15 +1207,14 @@ export default function AttendanceForm() {
                   </span>
                 </div>
                 <span
-                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${
-                    hasLocalPagi
-                      ? 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-500/40'
-                      : status1.isOpen
-                        ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                        : hariAbsen === 1
-                          ? 'bg-black/20 text-white border border-white/20'
-                          : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
-                  }`}
+                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${hasLocalPagi
+                    ? 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-500/40'
+                    : status1.isOpen
+                      ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                      : hariAbsen === 1
+                        ? 'bg-black/20 text-white border border-white/20'
+                        : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
+                    }`}
                 >
                   {hasLocalPagi ? '✓ Sudah Absen' : status1.isOpen ? 'BUKA' : status1.message}
                 </span>
@@ -1234,15 +1240,14 @@ export default function AttendanceForm() {
                   </span>
                 </div>
                 <span
-                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${
-                    hasLocalSiang
-                      ? 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-500/40'
-                      : status2.isOpen
-                        ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                        : hariAbsen === 2
-                          ? 'bg-black/20 text-white border border-white/20'
-                          : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
-                  }`}
+                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${hasLocalSiang
+                    ? 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-500/40'
+                    : status2.isOpen
+                      ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                      : hariAbsen === 2
+                        ? 'bg-black/20 text-white border border-white/20'
+                        : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
+                    }`}
                 >
                   {hasLocalSiang ? '✓ Sudah Absen' : status2.isOpen ? 'BUKA' : status2.message}
                 </span>
@@ -1346,13 +1351,12 @@ export default function AttendanceForm() {
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl sm:rounded-[32px] shadow-2xl w-full max-w-md sm:max-w-lg overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             {/* Header Ribbon / Banner */}
-            <div className={`relative px-6 pt-7 pb-6 text-white text-center flex flex-col items-center justify-center overflow-hidden flex-shrink-0 ${
-              successModalData?.isEligible
-                ? 'bg-gradient-to-br from-amber-500 via-orange-600 to-amber-700'
-                : successModalData?.isAlreadyRecorded
-                  ? 'bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700'
-                  : 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700'
-            }`}>
+            <div className={`relative px-6 pt-7 pb-6 text-white text-center flex flex-col items-center justify-center overflow-hidden flex-shrink-0 ${successModalData?.isEligible
+              ? 'bg-gradient-to-br from-amber-500 via-orange-600 to-amber-700'
+              : successModalData?.isAlreadyRecorded
+                ? 'bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700'
+                : 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700'
+              }`}>
               {/* Close Button X */}
               <button
                 type="button"
@@ -1364,13 +1368,12 @@ export default function AttendanceForm() {
               </button>
 
               {/* Big Animated Icon */}
-              <div className={`h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white flex items-center justify-center shadow-xl mb-3 ring-8 ring-white/20 ${
-                successModalData?.isEligible
-                  ? 'text-amber-600 shadow-amber-950/20'
-                  : successModalData?.isAlreadyRecorded
-                    ? 'text-blue-600 shadow-blue-950/20'
-                    : 'text-emerald-600 shadow-emerald-950/20'
-              }`}>
+              <div className={`h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white flex items-center justify-center shadow-xl mb-3 ring-8 ring-white/20 ${successModalData?.isEligible
+                ? 'text-amber-600 shadow-amber-950/20'
+                : successModalData?.isAlreadyRecorded
+                  ? 'text-blue-600 shadow-blue-950/20'
+                  : 'text-emerald-600 shadow-emerald-950/20'
+                }`}>
                 {successModalData?.isEligible ? (
                   <Award className="w-10 h-10 sm:w-12 sm:h-12 text-amber-600 stroke-[2.5]" />
                 ) : successModalData?.isAlreadyRecorded ? (
@@ -1417,25 +1420,23 @@ export default function AttendanceForm() {
                   <span className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
                     Tahapan Kehadiran
                   </span>
-                  <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
-                    successModalData?.isEligible
-                      ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                      : 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30'
-                  }`}>
+                  <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${successModalData?.isEligible
+                    ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                    : 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30'
+                    }`}>
                     {successModalData?.isEligible ? '✓ 100% Lengkap (2/2 Sesi)' : '⏳ 50% Selesai (1/2 Sesi)'}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   {/* Card Sesi Pagi */}
-                  <div className={`p-3 rounded-xl border flex flex-col justify-between ${
-                    (successModalData?.sesi === 'Pagi' || successModalData?.hasPagi || successModalData?.isEligible)
-                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200'
-                      : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
-                  }`}>
+                  <div className={`p-3 rounded-xl border flex flex-col justify-between ${(successModalData?.sesi === 'Pagi' || successModalData?.hasPagi || successModalData?.isEligible)
+                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200'
+                    : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
+                    }`}>
                     <div>
                       <div className="text-[10px] font-bold uppercase tracking-wider opacity-75">Sesi 1 (Pagi)</div>
-                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">08:00 - 11:30</div>
+                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">{SESSION_SCHEDULES[1].startTime} - {SESSION_SCHEDULES[1].endTime} WITA</div>
                     </div>
                     <div className="mt-2 pt-2 border-t border-emerald-500/20 text-xs font-bold">
                       {(successModalData?.sesi === 'Pagi' || successModalData?.hasPagi || successModalData?.isEligible) ? (
@@ -1453,16 +1454,15 @@ export default function AttendanceForm() {
                   </div>
 
                   {/* Card Sesi Siang */}
-                  <div className={`p-3 rounded-xl border flex flex-col justify-between ${
-                    (successModalData?.isEligible || (successModalData?.sesi === 'Siang' && successModalData?.hasSiang))
-                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200'
-                      : (successModalData?.sesi === 'Pagi' || successModalData?.hasPagi)
-                        ? 'bg-amber-500/15 border-amber-500/50 text-amber-950 dark:text-amber-200'
-                        : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
-                  }`}>
+                  <div className={`p-3 rounded-xl border flex flex-col justify-between ${(successModalData?.isEligible || (successModalData?.sesi === 'Siang' && successModalData?.hasSiang))
+                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200'
+                    : (successModalData?.sesi === 'Pagi' || successModalData?.hasPagi)
+                      ? 'bg-amber-500/15 border-amber-500/50 text-amber-950 dark:text-amber-200'
+                      : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
+                    }`}>
                     <div>
                       <div className="text-[10px] font-bold uppercase tracking-wider opacity-75">Sesi 2 (Siang)</div>
-                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">13:00 - 16:00</div>
+                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">{SESSION_SCHEDULES[2].startTime} - {SESSION_SCHEDULES[2].endTime} WITA</div>
                     </div>
                     <div className="mt-2 pt-2 border-t border-amber-500/30 text-xs font-bold">
                       {(successModalData?.isEligible || (successModalData?.sesi === 'Siang' && successModalData?.hasSiang)) ? (
@@ -1515,7 +1515,7 @@ export default function AttendanceForm() {
                     <div className="pt-1.5 flex flex-col gap-1 text-xs text-amber-950 dark:text-amber-200">
                       <div className="flex items-center gap-1.5 font-bold">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                        <span>Jadwal Sesi Siang: Pukul 13:00 - 16:00 WITA</span>
+                        <span>Jadwal Sesi Siang: Pukul {SESSION_SCHEDULES[2].startTime} - {SESSION_SCHEDULES[2].endTime} WITA</span>
                       </div>
                       <div className="flex items-center gap-1.5 font-semibold opacity-90">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
@@ -1539,11 +1539,10 @@ export default function AttendanceForm() {
                   <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
                     Sesi Absensi
                   </span>
-                  <span className={`px-3 py-0.5 font-extrabold text-xs sm:text-sm rounded-full ${
-                    successModalData?.isAlreadyRecorded
-                      ? 'bg-blue-500/20 border border-blue-500/40 text-blue-900 dark:text-blue-300'
-                      : 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-900 dark:text-emerald-300'
-                  }`}>
+                  <span className={`px-3 py-0.5 font-extrabold text-xs sm:text-sm rounded-full ${successModalData?.isAlreadyRecorded
+                    ? 'bg-blue-500/20 border border-blue-500/40 text-blue-900 dark:text-blue-300'
+                    : 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-900 dark:text-emerald-300'
+                    }`}>
                     Sesi {successModalData?.sesi}
                   </span>
                 </div>
@@ -1583,9 +1582,8 @@ export default function AttendanceForm() {
                   <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
                     Status Validasi
                   </span>
-                  <span className={`text-xs font-bold flex items-center gap-1 ${
-                    successModalData?.isAlreadyRecorded ? 'text-blue-700 dark:text-blue-400' : 'text-emerald-700 dark:text-emerald-400'
-                  }`}>
+                  <span className={`text-xs font-bold flex items-center gap-1 ${successModalData?.isAlreadyRecorded ? 'text-blue-700 dark:text-blue-400' : 'text-emerald-700 dark:text-emerald-400'
+                    }`}>
                     <ShieldCheck className="w-4 h-4" />
                     Terverifikasi di Database
                   </span>
@@ -1727,28 +1725,24 @@ export default function AttendanceForm() {
                           Status Sesi
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                          <div className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center ${
-                            checkResult.hasPagi
-                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
-                              : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
-                          }`}>
-                            <span className="text-xs font-bold">Sesi Pagi</span>
-                            <span className={`text-[11px] font-extrabold mt-1 flex items-center gap-1 ${
-                              checkResult.hasPagi ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-500'
+                          <div className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center ${checkResult.hasPagi
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
+                            : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
                             }`}>
+                            <span className="text-xs font-bold">Sesi Pagi</span>
+                            <span className={`text-[11px] font-extrabold mt-1 flex items-center gap-1 ${checkResult.hasPagi ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-500'
+                              }`}>
                               {checkResult.hasPagi ? '✓ Sudah Absen' : '⏳ Belum Absen'}
                             </span>
                           </div>
 
-                          <div className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center ${
-                            checkResult.hasSiang
-                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
-                              : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
-                          }`}>
-                            <span className="text-xs font-bold">Sesi Siang</span>
-                            <span className={`text-[11px] font-extrabold mt-1 flex items-center gap-1 ${
-                              checkResult.hasSiang ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-500'
+                          <div className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center ${checkResult.hasSiang
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
+                            : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
                             }`}>
+                            <span className="text-xs font-bold">Sesi Siang</span>
+                            <span className={`text-[11px] font-extrabold mt-1 flex items-center gap-1 ${checkResult.hasSiang ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-500'
+                              }`}>
                               {checkResult.hasSiang ? '✓ Sudah Absen' : '⏳ Belum Absen'}
                             </span>
                           </div>
@@ -1756,11 +1750,10 @@ export default function AttendanceForm() {
                       </div>
 
                       {/* Certificate Status */}
-                      <div className={`p-3 rounded-xl border text-xs leading-relaxed flex items-start space-x-2 ${
-                        checkResult.eligibleForCertificate
-                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-950 dark:text-amber-200'
-                          : 'bg-blue-500/10 border-blue-500/30 text-blue-900 dark:text-blue-200'
-                      }`}>
+                      <div className={`p-3 rounded-xl border text-xs leading-relaxed flex items-start space-x-2 ${checkResult.eligibleForCertificate
+                        ? 'bg-amber-500/15 border-amber-500/40 text-amber-950 dark:text-amber-200'
+                        : 'bg-blue-500/10 border-blue-500/30 text-blue-900 dark:text-blue-200'
+                        }`}>
                         <Award className="w-4 h-4 flex-shrink-0 mt-0.5" />
                         <div>
                           {checkResult.eligibleForCertificate ? (

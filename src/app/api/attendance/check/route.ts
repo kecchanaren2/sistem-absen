@@ -79,11 +79,11 @@ export async function POST(req: Request) {
     const firstRecord = pagiRecord || siangRecord || records[0];
 
     const pagiWaktu = pagiRecord?.created_at
-      ? new Date(pagiRecord.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA'
+      ? new Date(pagiRecord.created_at).toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit' }) + ' WITA'
       : undefined;
 
     const siangWaktu = siangRecord?.created_at
-      ? new Date(siangRecord.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA'
+      ? new Date(siangRecord.created_at).toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit' }) + ' WITA'
       : undefined;
 
     return NextResponse.json({
