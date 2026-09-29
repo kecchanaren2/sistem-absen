@@ -82,7 +82,7 @@ export async function POST(req: Request) {
         .from('rekap_gabungan')
         .select('nama_peserta, role, nim_nip')
         .eq('nim_nip', cleanNimNip);
-      
+
       if (!rekapError && rekapRecords && rekapRecords.length > 0) {
         attendanceRecords = rekapRecords as any;
       }
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
       // Panitia names must always come from the whitelist, never from form input.
       const firstRecord = attendanceRecords[0];
       let namaPeserta = firstRecord.nama_peserta;
-      
+
       // Normalize role name to handle CSV inconsistencies (e.g. "Peserta Dosen" -> "peserta_dosen")
       let rawRole = firstRecord.role || 'peserta_mahasiswa';
       let normalizedRole = String(rawRole).toLowerCase().trim().replace(/\s+/g, '_');
