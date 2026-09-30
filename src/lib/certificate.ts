@@ -59,7 +59,9 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
           ctx.fillStyle = '#000000';
 
           const capitalizedName = namaPeserta.replace(/\b\w/g, l => l.toUpperCase());
-          const isPengabdianCertificate = imageUrl === '/Peserta_Pengabdian.png';
+          // Cek apakah ini sertifikat pengabdian secara umum (untuk atur ukuran font max)
+          const isPengabdianCertificate = imageUrl.includes('Pengabdian.png');
+          const isRelawanPengabdian = imageUrl === '/Relawan_Pengabdian.png';
           let fontSize = Math.floor(canvas.width * (isPengabdianCertificate ? 0.035 : 0.05));
           ctx.font = `bold ${fontSize}px "Times New Roman", Times, serif`;
 
@@ -73,7 +75,16 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
           }
 
           const xPos = canvas.width / 2;
-          const yPos = canvas.height * (isPengabdianCertificate ? 0.30 : 0.31);
+
+          // KHUSUS Relawan Pengabdian naik ke 0.28, sisanya (termasuk Peserta Pengabdian) tetap di 0.31 atau 0.30
+          let yMultiplier = 0.31;
+          if (isRelawanPengabdian) {
+            yMultiplier = 0.30; // Cuma Relawan Pengabdian yang naik!
+          } else if (isPengabdianCertificate) {
+            yMultiplier = 0.30; // Peserta Pengabdian normal
+          }
+          const yPos = canvas.height * yMultiplier;
+
           ctx.fillText(capitalizedName, xPos, yPos);
 
           // 3. Download PNG
