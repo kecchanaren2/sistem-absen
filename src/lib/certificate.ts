@@ -19,6 +19,12 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
     case 'peserta_tendik':
       templates = ['/Peserta_Acara_Dosen.png'];
       break;
+    case 'pengabdian_dosen':
+      templates = ['/Peserta_Pengabdian.png'];
+      break;
+    case 'pengabdian_mahasiswa':
+      templates = ['/Peserta_Pengabdian.png'];
+      break;
     case 'peserta_mahasiswa':
     default:
       templates = ['/Peserta_Acara.png'];
