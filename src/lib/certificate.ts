@@ -20,7 +20,7 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
       templates = ['/Peserta_Acara_Dosen.png'];
       break;
     case 'pengabdian_dosen':
-      templates = ['/Peserta_Pengabdian.png'];
+      templates = ['/Relawan_Pengabdian.png'];
       break;
     case 'pengabdian_mahasiswa':
       templates = ['/Peserta_Pengabdian.png'];
