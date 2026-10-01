@@ -58,7 +58,16 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
           ctx.textBaseline = 'middle';
           ctx.fillStyle = '#000000';
 
-          const capitalizedName = namaPeserta.replace(/\b\w/g, l => l.toUpperCase());
+          // Format kapitalisasi nama (Title Case), tapi JANGAN merusak gelar yang harus huruf kecil
+          const capitalizedName = namaPeserta.replace(/\b\w+/g, (word) => {
+            const exceptions = ['dr', 'drg', 'drh', 'ns', 'sp', 'apt'];
+            // Jika kata tersebut persis ada di daftar pengecualian (huruf kecil), jangan di-kapital!
+            if (exceptions.includes(word)) {
+              return word;
+            }
+            return word.charAt(0).toUpperCase() + word.slice(1);
+          });
+          
           // Cek apakah ini sertifikat pengabdian secara umum (untuk atur ukuran font max)
           const isPengabdianCertificate = imageUrl.includes('Pengabdian.png');
           const isRelawanPengabdian = imageUrl === '/Relawan_Pengabdian.png';
