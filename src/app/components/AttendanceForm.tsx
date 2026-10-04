@@ -690,10 +690,16 @@ export default function AttendanceForm() {
             alt="Logo PTNBH"
             className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
-          {/* Dies */}
+          {/* Logo Pelayanan 1 */}
           <img
-            src="/logo/dies.png"
-            alt="Logo Dies Natalis"
+            src="/logo/Logo Pelayanan 1.png"
+            alt="Logo Pelayanan 1"
+            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
+          />
+          {/* Workshop */}
+          <img
+            src="/logo/logo workshop.png"
+            alt="logo workshop"
             className="h-8 sm:h-8 md:h-9 w-auto object-contain"
           />
         </div>
