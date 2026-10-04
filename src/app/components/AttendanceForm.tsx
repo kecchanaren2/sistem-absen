@@ -437,9 +437,6 @@ export default function AttendanceForm() {
     const cleanNimNip = nimNip.trim();
 
     try {
-      // 1. Get Local Token
-      const localToken = localStorage.getItem('absen_local_token') || '';
-
       // 2. Submit to API
       const response = await fetch('/api/attendance', {
         method: 'POST',
@@ -451,8 +448,6 @@ export default function AttendanceForm() {
           nama_peserta: namaPeserta,
           role,
           nim_nip: cleanNimNip,
-          Sesi: hariAbsen,
-          local_token: localToken,
         }),
       });
 
@@ -525,11 +520,6 @@ export default function AttendanceForm() {
         }
 
         throw new Error(data.error || 'Terjadi kesalahan');
-      }
-
-      // Save token if new
-      if (data.local_token && !localToken) {
-        localStorage.setItem('absen_local_token', data.local_token);
       }
 
       setMessage({ text: data.message, type: 'success' });
@@ -727,7 +717,7 @@ export default function AttendanceForm() {
               <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
               <div>
                 <div className="font-bold text-emerald-950 dark:text-emerald-100">
-                  Perangkat Ini Sudah Absen Sesi {localHistory.sesi}
+                  Perangkat ini sudah absen
                 </div>
                 <div className="text-[11px] sm:text-xs text-emerald-800/85 dark:text-emerald-300/80 mt-0.5 leading-relaxed">
                   Tercatat sebagai <strong className="font-semibold">{getRoleLabel(localHistory.role || role)}</strong> untuk <strong className="font-bold">{localHistory.nama}</strong> ({localHistory.nimNip}) pukul {localHistory.waktu}.

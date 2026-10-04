@@ -32,17 +32,7 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-const isPagi = (sesi?: string) => {
-  if (!sesi) return false;
-  const s = String(sesi).trim().toLowerCase();
-  return s.startsWith('pagi') || s === '1';
-};
 
-const isSiang = (sesi?: string) => {
-  if (!sesi) return false;
-  const s = String(sesi).trim().toLowerCase();
-  return s.startsWith('siang') || s === '2';
-};
 
 // 10:00 WITA = 02:00 UTC pada 28 September 2026
 const isMorningTimestamp = (createdAt?: string) => {
@@ -84,8 +74,8 @@ export async function POST(req: Request) {
     if (cleanNimNip) {
       const { data: nimRecords, error: nimError } = await supabaseAdmin
         .from('attendance')
-        .select('id, Sesi, nama_peserta, role, created_at, email, nim_nip')
-        .eq('nim_nip', cleanNimNip);
+        .select('name, peran, waktu_date, email, "NIM/NIP"')
+        .eq('NIM/NIP', cleanNimNip);
 
       if (nimError) {
         console.error('Check status error (NIM):', nimError);
@@ -94,24 +84,23 @@ export async function POST(req: Request) {
       }
     }
 
-    // 2. Fallback pencocokan Email jika Sesi Pagi belum terdeteksi dari NIM saja
-    // (Menyelamatkan peserta yang typo 1 angka NIM antara Sesi Pagi & Siang)
+    // 2. Fallback pencocokan Email jika data belum terdeteksi dari NIM saja
+    // (Menyelamatkan peserta yang typo 1 angka NIM)
     const emailToSearch = cleanEmail || (records.length > 0 && records[0]?.email ? String(records[0].email).trim().toLowerCase() : '');
-    const hasPagiInRecords = records.some((r) => isPagi(r.Sesi) || isMorningTimestamp(r.created_at));
 
-    if (emailToSearch && !hasPagiInRecords) {
+    if (emailToSearch && records.length === 0) {
       const { data: emailRecords, error: emailError } = await supabaseAdmin
         .from('attendance')
-        .select('id, Sesi, nama_peserta, role, created_at, email, nim_nip')
+        .select('name, peran, waktu_date, email, "NIM/NIP"')
         .ilike('email', emailToSearch);
 
       if (emailError) {
         console.error('Check status error (Email fallback):', emailError);
       } else if (emailRecords && emailRecords.length > 0) {
         // Gabungkan catatan unik
-        const existingIds = new Set(records.map((r) => r.id || `${r.nim_nip}-${r.Sesi}`));
+        const existingIds = new Set(records.map((r) => `${r['NIM/NIP']}`));
         emailRecords.forEach((er) => {
-          const key = er.id || `${er.nim_nip}-${er.Sesi}`;
+          const key = `${er['NIM/NIP']}`;
           if (!existingIds.has(key)) {
             records.push(er);
           }
@@ -127,28 +116,19 @@ export async function POST(req: Request) {
       });
     }
 
-    const pagiRecord = records.find((r) => isPagi(r.Sesi) || isMorningTimestamp(r.created_at));
-    const siangRecord = records.find((r) => isSiang(r.Sesi) && !isMorningTimestamp(r.created_at));
-    const firstRecord = pagiRecord || siangRecord || records[0];
+    const firstRecord = records[0];
 
-    const pagiWaktu = pagiRecord?.created_at
-      ? new Date(pagiRecord.created_at).toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit' }) + ' WITA'
-      : undefined;
-
-    const siangWaktu = siangRecord?.created_at
-      ? new Date(siangRecord.created_at).toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit' }) + ' WITA'
+    const waktuAbsen = firstRecord?.waktu_date
+      ? new Date(firstRecord.waktu_date).toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit' }) + ' WITA'
       : undefined;
 
     return NextResponse.json({
       found: true,
-      nim_nip: cleanNimNip || firstRecord.nim_nip,
-      nama: firstRecord.nama_peserta || '',
-      role: firstRecord.role || '',
-      hasPagi: !!pagiRecord,
-      hasSiang: !!siangRecord,
-      pagiWaktu,
-      siangWaktu,
-      eligibleForCertificate: !!pagiRecord || !!siangRecord || records.length > 0,
+      nim_nip: cleanNimNip || firstRecord['NIM/NIP'],
+      nama: firstRecord.name || '',
+      role: firstRecord.peran || '',
+      waktu: waktuAbsen,
+      eligibleForCertificate: records.length > 0,
     });
   } catch (err) {
     console.error('API Check Error:', err);

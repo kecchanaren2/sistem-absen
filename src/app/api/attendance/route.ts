@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSessionStatus, SESSION_SCHEDULES } from '@/lib/schedule';
-import { v4 as uuidv4 } from 'uuid';
 // ============================================
 // RATE LIMITING (Simple In-Memory Store)
 // ============================================
@@ -48,7 +47,7 @@ function isValidParticipantName(name: string): boolean {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, nama_peserta, role, nim_nip, Sesi, local_token } = body;
+    const { email, nama_peserta, role, nim_nip, } = body;
 
     // Rate limit berdasarkan IP (GPS & fingerprint perangkat dinonaktifkan)
     const ip = getRateLimitKey(req);
@@ -64,7 +63,7 @@ export async function POST(req: Request) {
     const isPanitiaRole = role === 'panitia_mahasiswa' || role === 'panitia_dosen';
 
     // 1. Basic Validation
-    if (!email || (!isPanitiaRole && !nama_peserta) || !nim_nip || !Sesi) {
+    if (!email || (!isPanitiaRole && !nama_peserta) || !nim_nip) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -146,21 +145,12 @@ export async function POST(req: Request) {
       verifiedPanitiaName = whitelistEntry.Nama;
     }
 
-    // Validate Sesi value
-    const sessionId = Number(Sesi) as 1 | 2;
-    if (![1, 2].includes(sessionId)) {
-      return NextResponse.json({ error: 'Sesi absensi tidak valid.' }, { status: 400 });
-    }
-
-    // Nama sesi untuk tampilan
-    const sesiName = sessionId === 1 ? 'Pagi' : 'Siang';
-
     // Check Schedule Validation
-    const scheduleStatus = getSessionStatus(sessionId);
+    const scheduleStatus = getSessionStatus(1);
     if (!scheduleStatus.isOpen) {
-      const sessionConfig = SESSION_SCHEDULES[sessionId];
+      const sessionConfig = SESSION_SCHEDULES[1];
       return NextResponse.json({
-        error: `Absensi Sesi ${sessionConfig.name} sedang ditutup (${scheduleStatus.message}).`
+        error: `Absensi sedang ditutup (${scheduleStatus.message}).`
       }, { status: 400 });
     }
 
@@ -168,55 +158,17 @@ export async function POST(req: Request) {
 
     // 3. Anti-Cheat Validations are handled by Supabase UNIQUE INDEX constraint.
 
-    // 4. Generate new token if not provided
-    const newToken = local_token || uuidv4();
-
-    // 5. Insert ke Database — kolom Sesi menyimpan "Pagi" atau "Siang"
+    // 5. Insert ke Database
     const { error: insertError } = await supabaseAdmin
       .from('attendance')
       .insert({
-        email,
-        nama_peserta: verifiedPanitiaName,
-        role,
-        nim_nip: cleanNimNip,
-        Sesi: sesiName,
-        local_token: newToken
+        name: verifiedPanitiaName,
+        email: email,
+        peran: role,
+        "NIM/NIP": cleanNimNip,
+        waktu_date: new Date().toISOString(),
       });
 
-    // Helper untuk mengecek kelayakan sertifikat (Sesi Pagi selesai)
-    // Mendukung 'Pagi', 'Pagi ( 08-00 -10.00 )', '1', atau record sebelum jam 10:00 WITA (02:00 UTC)
-    // Serta mencocokkan via NIM ataupun Email fallback (mengatasi salah ketik NIM)
-    const checkEligiblePagi = async (nim: string, emailStr?: string): Promise<boolean> => {
-      const isPagiMatch = (r: { Sesi?: string; created_at?: string }) => {
-        const s = String(r.Sesi || '').trim().toLowerCase();
-        const isMorning = r.created_at && new Date(r.created_at).getTime() < new Date('2026-09-28T02:00:00Z').getTime();
-        return s.startsWith('pagi') || s === '1' || isMorning;
-      };
-
-      if (nim) {
-        const { data: nimRecords } = await supabaseAdmin
-          .from('attendance')
-          .select('id, Sesi, created_at')
-          .eq('nim_nip', nim);
-
-        if (nimRecords && nimRecords.some(isPagiMatch)) {
-          return true;
-        }
-      }
-
-      if (emailStr) {
-        const { data: emailRecords } = await supabaseAdmin
-          .from('attendance')
-          .select('id, Sesi, created_at')
-          .ilike('email', emailStr.trim().toLowerCase());
-
-        if (emailRecords && emailRecords.some(isPagiMatch)) {
-          return true;
-        }
-      }
-
-      return false;
-    };
 
     if (insertError) {
       console.error('Insert error:', insertError);
@@ -226,21 +178,19 @@ export async function POST(req: Request) {
         // Ambil data existing dari database untuk mendapatkan role, nama_peserta, dan waktu absensi yang akurat
         const { data: existingRecord } = await supabaseAdmin
           .from('attendance')
-          .select('role, nama_peserta, created_at')
-          .eq('nim_nip', cleanNimNip)
-          .eq('Sesi', sesiName)
+          .select('peran, name, waktu_date')
+          .eq('NIM/NIP', cleanNimNip)
           .limit(1);
 
-        const existingRole = (existingRecord && existingRecord[0]?.role) || role;
-        const existingNama = (existingRecord && existingRecord[0]?.nama_peserta) || verifiedPanitiaName;
-        const existingWaktu = existingRecord && existingRecord[0]?.created_at
-          ? new Date(existingRecord[0].created_at).toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit' }) + ' WITA'
+        const existingRole = (existingRecord && existingRecord[0]?.peran) || role;
+        const existingNama = (existingRecord && existingRecord[0]?.name) || verifiedPanitiaName;
+        const existingWaktu = existingRecord && existingRecord[0]?.waktu_date
+          ? new Date(existingRecord[0].waktu_date).toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit' }) + ' WITA'
           : undefined;
 
         return NextResponse.json({ 
-          error: `Sistem mendeteksi pengiriman ganda. Anda (atau perangkat Anda) sudah tercatat absen di Sesi ${sesiName}.`,
+          error: `Sistem mendeteksi pengiriman ganda. Anda (atau perangkat Anda) sudah tercatat absen.`,
           already_attended: true,
-          sesi: sesiName,
           nama_peserta: existingNama,
           role: existingRole,
           waktu: existingWaktu,
@@ -256,8 +206,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Absensi Sesi ${sesiName} berhasil disimpan!`,
-      local_token: newToken,
+      message: `Absensi berhasil disimpan!`,
       nama_peserta: verifiedPanitiaName,
       role,
       eligibleForCertificate
