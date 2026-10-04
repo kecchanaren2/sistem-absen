@@ -1,11 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import fpPromise from '@fingerprintjs/fingerprintjs';
 import {
   ChevronDown,
-  MapPin,
-  Smartphone,
   Loader2,
   CheckCircle,
   AlertCircle,
@@ -121,7 +118,7 @@ function getLocalAttendanceRecord(
 export default function AttendanceForm() {
   const [email, setEmail] = useState('');
   const [namaPeserta, setNamaPeserta] = useState('');
-  const [role, setRole] = useState<'panitia_mahasiswa' | 'panitia_dosen' | 'peserta_mahasiswa' | 'peserta_tendik' | 'peserta_dosen'>('peserta_mahasiswa');
+  const [role, setRole] = useState<'panitia_mahasiswa' | 'panitia_dosen' | 'peserta_mahasiswa' | 'peserta_tendik' | 'peserta_dosen'>('peserta_dosen');
   const [nimNip, setNimNip] = useState('');
   const [hariAbsen, setHariAbsen] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -175,33 +172,17 @@ export default function AttendanceForm() {
   const [isDark, setIsDark] = useState<boolean>(true);
   const [isMounted, setIsMounted] = useState(false);
 
-  // States for indicators
-  const [locationStatus, setLocationStatus] = useState<'pending' | 'success' | 'error'>('pending');
-  const [fpStatus, setFpStatus] = useState<'pending' | 'success' | 'error'>('pending');
   const [roleOpen, setRoleOpen] = useState(false);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const isSubmittingRef = useRef(false);
 
-  const [visitorId, setVisitorId] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [gpsProgressText, setGpsProgressText] = useState<string>('');
-  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
 
   // Schedules state
   const [status1, setStatus1] = useState<SessionStatus>(() => getSessionStatus(1));
   const [status2, setStatus2] = useState<SessionStatus>(() => getSessionStatus(2));
 
   const isPanitiaRole = role === 'panitia_mahasiswa' || role === 'panitia_dosen';
-
-  // Detect iOS In-App Browser (WhatsApp, Instagram, Line, etc.)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const ua = navigator.userAgent || '';
-      const isIOS = /iPhone|iPad|iPod/i.test(ua);
-      const inApp = isIOS && /FBAN|FBAV|Instagram|Line|WhatsApp|TikTok|Telegram|MicroMessenger/i.test(ua);
-      setIsInAppBrowser(inApp);
-    }
-  }, []);
 
   // Initialize theme
   useEffect(() => {
@@ -244,12 +225,6 @@ export default function AttendanceForm() {
       setStatus1(s1);
       setStatus2(s2);
 
-      // Auto select open session
-      if (!s1.isOpen && s2.isOpen) {
-        setHariAbsen((prev) => (prev !== 2 ? 2 : prev));
-      } else if (s1.isOpen && !s2.isOpen) {
-        setHariAbsen((prev) => (prev !== 1 ? 1 : prev));
-      }
     };
 
     updateTick();
@@ -291,7 +266,7 @@ export default function AttendanceForm() {
           });
           setHasLocalSiang(true);
         }
-        if (result.role && ['panitia_mahasiswa', 'panitia_dosen', 'peserta_mahasiswa', 'peserta_tendik', 'peserta_dosen'].includes(result.role)) {
+        if (result.role && ['peserta_tendik', 'peserta_dosen'].includes(result.role)) {
           setRole(result.role as any);
         }
         if (result.nama && !namaPeserta && role !== 'panitia_mahasiswa' && role !== 'panitia_dosen') {
@@ -330,33 +305,6 @@ export default function AttendanceForm() {
     }
   }, [hariAbsen, showSuccessModal]);
 
-  useEffect(() => {
-    // Initialize FingerprintJS with Safari / iOS anti-tracking fallback
-    const getFingerprint = async () => {
-      try {
-        const fp = await fpPromise.load();
-        const result = await fp.get();
-        setVisitorId(result.visitorId);
-        setFpStatus('success');
-      } catch (error) {
-        console.warn('FingerprintJS blocked or failed, using local device identifier fallback:', error);
-        try {
-          let fallbackId = localStorage.getItem('absen_visitor_fallback');
-          if (!fallbackId) {
-            fallbackId = 'device_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36));
-            localStorage.setItem('absen_visitor_fallback', fallbackId);
-          }
-          setVisitorId(fallbackId);
-          setFpStatus('success');
-        } catch {
-          setFpStatus('error');
-        }
-      }
-    };
-
-    getFingerprint();
-  }, []);
-
   // Close dropdown on outside click
   useEffect(() => {
     if (!roleOpen) return;
@@ -372,98 +320,6 @@ export default function AttendanceForm() {
       document.removeEventListener('touchstart', handler);
     };
   }, [roleOpen]);
-
-  // 3-Attempt Smart GPS Acquisition with 30s Timeout per attempt
-  const getLocationWithRetry = async (
-    onProgress?: (text: string) => void
-  ): Promise<GeolocationPosition> => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      throw new Error('Geolocation tidak didukung oleh browser Anda');
-    }
-
-    const MAX_ATTEMPTS = 3;
-    const TIMEOUT_MS = 30000; // 30 detik untuk setiap percobaan
-    let lastError: Error | null = null;
-
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      if (attempt === 1) {
-        onProgress?.('Mengecek GPS (Percobaan 1/3)...');
-      } else if (attempt === 2) {
-        onProgress?.('Mengoptimalkan GPS (Percobaan 2/3)...');
-      } else {
-        onProgress?.('Menyesuaikan Lokasi (Percobaan 3/3)...');
-      }
-
-      try {
-        const isFallback = attempt === MAX_ATTEMPTS;
-
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              const acc = pos.coords.accuracy;
-              // Deteksi Fake GPS / Mock Location (akurasi 0m / < 1m)
-              if (acc < 1.0) {
-                return reject(new Error('Terdeteksi lokasi tidak valid (Fake GPS / Mock Location). Harap gunakan GPS asli perangkat Anda.'));
-              }
-              // Deteksi Sinyal GPS Terlalu Lemah / Kurang Akurat (> 150m)
-              if (acc > 150) {
-                return reject(new Error(`Sinyal GPS kurang akurat (${Math.round(acc)} meter). Harap aktifkan Mode Akurasi Tinggi.`));
-              }
-              resolve(pos);
-            },
-            (err) => reject(err),
-            {
-              enableHighAccuracy: !isFallback, // Percobaan 1 & 2 High Accuracy, Percobaan 3 Fallback
-              timeout: TIMEOUT_MS,             // 30 detik timeout setiap percobaan
-              maximumAge: isFallback ? 30000 : 0, // Fallback dapat menggunakan cache 30 detik
-            }
-          );
-        });
-
-        return position;
-      } catch (err: unknown) {
-        const isGeolocationPositionError = typeof err === 'object' && err !== null && 'code' in err;
-        const errCode = isGeolocationPositionError ? (err as GeolocationPositionError).code : null;
-        const errMsg = err instanceof Error ? err.message : String(err);
-
-        // Jika user secara eksplisit menolak izin (code 1 = PERMISSION_DENIED), hentikan loop
-        if (errCode === 1 || errMsg.toLowerCase().includes('denied') || errMsg.toLowerCase().includes('permission')) {
-          const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
-          if (isIOS) {
-            throw new Error('Izin lokasi ditolak. Buka Pengaturan iPhone > Privasi & Keamanan > Layanan Lokasi > Safari, dan aktifkan izin lokasi serta "Lokasi Tepat".');
-          }
-          throw new Error('Mohon izinkan akses lokasi pada browser untuk melakukan absensi.');
-        }
-
-        // Jika Fake GPS terdeteksi, hentikan loop
-        if (errMsg.includes('Fake GPS')) {
-          throw err;
-        }
-
-        lastError = err instanceof Error ? err : new Error(errMsg || 'Gagal membaca GPS');
-
-        // Jeda 1 detik sebelum percobaan berikutnya untuk stabilisasi chip GPS
-        if (attempt < MAX_ATTEMPTS) {
-          await new Promise((res) => setTimeout(res, 1000));
-        }
-      }
-    }
-
-    const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    let finalMsg = 'Gagal mendapatkan lokasi setelah 3 kali percobaan (timeout 30 detik). Pastikan GPS aktif.';
-    if (isIOS) {
-      finalMsg += ' Pada iPhone, pastikan opsi "Lokasi Tepat" (Precise Location) aktif di Pengaturan > Privasi > Layanan Lokasi > Safari.';
-    }
-    throw lastError || new Error(finalMsg);
-  };
-
-  const generateSignature = async (latitude: number, longitude: number, accuracy: number, timestamp: number): Promise<string> => {
-    const message = `${latitude}|${longitude}|${accuracy}|${timestamp}|SECRET_SALT_2026`;
-    const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  };
 
   const handleNimBlur = () => {
     if (nimNip && nimNip.trim().length >= 8) {
@@ -513,7 +369,7 @@ export default function AttendanceForm() {
           });
           setHasLocalSiang(true);
         }
-        if (result.role && ['panitia_mahasiswa', 'panitia_dosen', 'peserta_mahasiswa', 'peserta_tendik', 'peserta_dosen'].includes(result.role)) {
+        if (result.role && ['peserta_tendik', 'peserta_dosen'].includes(result.role)) {
           setRole(result.role as any);
         }
         try {
@@ -563,12 +419,7 @@ export default function AttendanceForm() {
     }
 
     if (!selectedSessionStatus.isOpen) {
-      setMessage({ text: `Sesi ${SESSION_SCHEDULES[hariAbsen].name} sedang ditutup.`, type: 'error' });
-      return;
-    }
-
-    if (!visitorId) {
-      setMessage({ text: 'Identifikasi perangkat belum siap. Silakan refresh halaman.', type: 'error' });
+      setMessage({ text: 'Absensi sedang ditutup.', type: 'error' });
       return;
     }
 
@@ -586,29 +437,10 @@ export default function AttendanceForm() {
     const cleanNimNip = nimNip.trim();
 
     try {
-      // 1. Get Geolocation (3-Pass Smart Retry dengan 30s timeout per attempt)
-      let position: GeolocationPosition;
-      setLocationStatus('pending');
-      try {
-        position = await getLocationWithRetry((text) => setGpsProgressText(text));
-        setLocationStatus('success');
-      } catch (error: unknown) {
-        setLocationStatus('error');
-        const errMessage = error instanceof Error ? error.message : '';
-        throw new Error(errMessage || 'Gagal mendapatkan lokasi. Pastikan GPS aktif.');
-      }
-
-      setGpsProgressText('Menyimpan Absensi...');
-
-      // 2. Get Local Token
+      // 1. Get Local Token
       const localToken = localStorage.getItem('absen_local_token') || '';
 
-      // 3. Generate Anti-Burp Signature
-      const timestamp = Date.now();
-      const accuracy = position.coords.accuracy;
-      const signature = await generateSignature(position.coords.latitude, position.coords.longitude, accuracy, timestamp);
-
-      // 4. Submit to API
+      // 2. Submit to API
       const response = await fetch('/api/attendance', {
         method: 'POST',
         headers: {
@@ -620,13 +452,7 @@ export default function AttendanceForm() {
           role,
           nim_nip: cleanNimNip,
           Sesi: hariAbsen,
-          visitor_id: visitorId,
           local_token: localToken,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy,
-          timestamp,
-          signature,
         }),
       });
 
@@ -769,7 +595,6 @@ export default function AttendanceForm() {
       setMessage({ text: errorMessage, type: 'error' });
     } finally {
       setIsLoading(false);
-      setGpsProgressText('');
     }
   };
 
@@ -780,14 +605,11 @@ export default function AttendanceForm() {
   // yang memverifikasi role langsung dari database (server-side).
 
   const ROLES = [
-    { value: 'panitia_mahasiswa', label: 'Panitia Mahasiswa', group: 'Panitia' },
-    { value: 'panitia_dosen', label: 'Panitia Dosen', group: 'Panitia' },
-    { value: 'peserta_mahasiswa', label: 'Peserta Mahasiswa', group: 'Peserta' },
     { value: 'peserta_tendik', label: 'Peserta Tendik', group: 'Peserta' },
     { value: 'peserta_dosen', label: 'Peserta Dosen', group: 'Peserta' },
   ] as const;
 
-  const selectedRole = ROLES.find((r) => r.value === role) || ROLES[2];
+  const selectedRole = ROLES.find((r) => r.value === role) || ROLES[0];
   const isDosenRole = role === 'panitia_dosen' || role === 'peserta_dosen' || role === 'peserta_tendik';
 
   return (
@@ -892,53 +714,6 @@ export default function AttendanceForm() {
 
       {/* Body Content */}
       <div className="p-5 sm:p-7 md:p-9 flex flex-col space-y-5 md:space-y-6">
-        {/* Real-time Hardware & Geo Verification Status (Borderless / No outline as it's non-interactive) */}
-        <div className="flex flex-row items-center justify-around py-1 sm:py-2 px-2 select-none pointer-events-none">
-          {/* GPS Location Status */}
-          <div className="flex flex-1 flex-col items-center justify-center space-y-1">
-            {locationStatus === 'pending' ? (
-              <MapPin className="text-amber-500 animate-bounce w-5 h-5" />
-            ) : locationStatus === 'success' ? (
-              <MapPin className="text-emerald-500 w-5 h-5" />
-            ) : (
-              <AlertCircle className="text-rose-500 w-5 h-5" />
-            )}
-            <span className="text-xs sm:text-xs font-semibold text-[#5a4439] dark:text-[#d1bfb5]">
-              Lokasi GPS
-            </span>
-            <span className="text-[11px] text-[#8c776c] dark:text-[#a8968c] font-medium">
-              {locationStatus === 'success' ? 'Terverifikasi ✓' : locationStatus === 'error' ? 'Gagal ✗' : 'Siap'}
-            </span>
-          </div>
-
-          {/* Device Verification Status */}
-          <div className="flex flex-1 flex-col items-center justify-center space-y-1">
-            {fpStatus === 'pending' ? (
-              <Smartphone className="text-amber-500 animate-pulse w-5 h-5" />
-            ) : fpStatus === 'success' ? (
-              <Smartphone className="text-emerald-500 w-5 h-5" />
-            ) : (
-              <AlertCircle className="text-rose-500 w-5 h-5" />
-            )}
-            <span className="text-xs font-semibold text-[#5a4439] dark:text-[#d1bfb5]">
-              Perangkat
-            </span>
-            <span className="text-[11px] text-[#8c776c] dark:text-[#a8968c] font-medium">
-              {fpStatus === 'success' ? 'Terverifikasi ✓' : fpStatus === 'error' ? 'Gagal ✗' : 'Memeriksa...'}
-            </span>
-          </div>
-        </div>
-
-        {/* In-App Browser Warning Banner for iOS */}
-        {isInAppBrowser && (
-          <div className="p-4 rounded-2xl bg-amber-500/15 dark:bg-amber-950/40 border border-amber-500/40 dark:border-amber-700/60 text-amber-900 dark:text-amber-200 text-xs flex items-start space-x-2.5 shadow-xs">
-            <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <div className="leading-relaxed">
-              <strong className="font-bold">Membuka dari Aplikasi Chat/In-App:</strong> Terdeteksi membuka dari dalam aplikasi (WhatsApp/Instagram/dll). Izin lokasi sering terblokir di iPhone. Jika terjadi kendala izin GPS, silakan ketuk ikon titik tiga (•••) atau tombol bagikan di pojok, lalu pilih <strong className="underline">"Buka di Safari"</strong>.
-            </div>
-          </div>
-        )}
-
         {/* Local Device History Banner (0 network & 0 server cost) */}
         {localHistory && (
           <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm flex items-start justify-between gap-3 shadow-xs">
@@ -983,21 +758,6 @@ export default function AttendanceForm() {
             >
               Lihat Bukti
             </button>
-          </div>
-        )}
-
-        {/* Sesi Siang Helper Banner: Muncul jika di HP ini Sesi Pagi sudah tercatat dan saat ini membuka Sesi Siang yang belum absen */}
-        {hariAbsen === 2 && hasLocalPagi && !localHistory && (
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-950/30 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs sm:text-sm flex items-start space-x-2.5 shadow-xs">
-            <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <div className="font-bold text-amber-950 dark:text-amber-100">
-                Absensi Sesi Pagi Anda Telah Selesai ✓
-              </div>
-              <div className="text-[11px] sm:text-xs text-amber-900/85 dark:text-amber-200/80 mt-0.5 leading-relaxed">
-                Silakan lakukan absensi <strong>Sesi Siang</strong> di bawah ini menggunakan perangkat yang sama untuk melengkapi kehadiran Anda dan mendapatkan E-Sertifikat resmi.
-              </div>
-            </div>
           </div>
         )}
 
@@ -1071,35 +831,8 @@ export default function AttendanceForm() {
               {/* Dropdown panel */}
               {roleOpen && (
                 <div className="absolute z-50 left-0 right-0 mt-1.5 rounded-2xl border border-[#decbc0] dark:border-[#4f382c] bg-[#fcfaf8] dark:bg-[#2b1c16] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                  {/* Panitia group */}
-                  <div className="px-3 pt-2.5 pb-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#9d8a80] dark:text-[#8f7e75]">
-                      Panitia
-                    </span>
-                  </div>
-                  {ROLES.filter((r) => r.group === 'Panitia').map((r) => (
-                    <button
-                      key={r.value}
-                      type="button"
-                      onClick={() => {
-                        setRole(r.value);
-                        setMessage(null);
-                        setRoleOpen(false);
-                      }}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation cursor-pointer active:scale-[0.99] ${role === r.value
-                        ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 font-bold'
-                        : 'text-[#3d2b22] dark:text-[#e5d8d0] hover:bg-[#efe7e2] dark:hover:bg-[#38261e]'
-                        }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${role === r.value ? 'bg-orange-500' : 'bg-[#decbc0] dark:bg-[#4f382c]'
-                          }`}
-                      />
-                      <span>{r.label}</span>
-                    </button>
-                  ))}
                   {/* Peserta group */}
-                  <div className="px-3 pt-3 pb-1 border-t border-[#decbc0]/60 dark:border-[#4f382c]/60 mt-1">
+                  <div className="px-3 pt-2.5 pb-1">
                     <span className="text-[10px] font-black uppercase tracking-widest text-[#9d8a80] dark:text-[#8f7e75]">
                       Peserta
                     </span>
@@ -1191,86 +924,12 @@ export default function AttendanceForm() {
             />
           </div>
 
-          {/* Sesi Absensi Selection */}
-          <div className="flex flex-col space-y-2 pt-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
-              SESI ABSENSI
-            </label>
-            <div className="flex flex-row gap-2.5 sm:gap-3 w-full">
-              {/* Sesi Pagi */}
-              <button
-                type="button"
-                onClick={() => setHariAbsen(1)}
-                className={`flex-1 flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border-2 transition-all touch-manipulation active:scale-[0.98] ${hariAbsen === 1
-                  ? 'border-orange-500 bg-[#f87158] dark:bg-[#532616] text-white shadow-md ring-2 ring-orange-500/25'
-                  : 'border-[#decbc0] dark:border-[#4f382c] bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23]'
-                  } ${!status1.isOpen ? 'opacity-85' : 'cursor-pointer'}`}
-              >
-                <div className="flex items-center space-x-1.5 mb-1">
-                  <span className="text-base font-extrabold">Pagi</span>
-                  {!status1.isOpen && <Lock className="w-3.5 h-3.5 opacity-70" />}
-                </div>
-                <div className="flex items-center text-[11px] space-x-1 font-medium opacity-85">
-                  <Clock className="w-3 h-3" />
-                  <span>
-                    {SESSION_SCHEDULES[1].startTime} - {SESSION_SCHEDULES[1].endTime}
-                  </span>
-                </div>
-                <span
-                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${hasLocalPagi
-                    ? 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-500/40'
-                    : status1.isOpen
-                      ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                      : hariAbsen === 1
-                        ? 'bg-black/20 text-white border border-white/20'
-                        : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
-                    }`}
-                >
-                  {hasLocalPagi ? '✓ Sudah Absen' : status1.isOpen ? 'BUKA' : status1.message}
-                </span>
-              </button>
-
-              {/* Sesi Siang */}
-              <button
-                type="button"
-                onClick={() => setHariAbsen(2)}
-                className={`flex-1 flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border-2 transition-all touch-manipulation active:scale-[0.98] ${hariAbsen === 2
-                  ? 'border-orange-500 bg-[#f87158] dark:bg-[#532616] text-white shadow-md ring-2 ring-orange-500/25'
-                  : 'border-[#decbc0] dark:border-[#4f382c] bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23]'
-                  } ${!status2.isOpen ? 'opacity-85' : 'cursor-pointer'}`}
-              >
-                <div className="flex items-center space-x-1.5 mb-1">
-                  <span className="text-base font-extrabold">Siang</span>
-                  {!status2.isOpen && <Lock className="w-3.5 h-3.5 opacity-70" />}
-                </div>
-                <div className="flex items-center text-[11px] space-x-1 font-medium opacity-85">
-                  <Clock className="w-3 h-3" />
-                  <span>
-                    {SESSION_SCHEDULES[2].startTime} - {SESSION_SCHEDULES[2].endTime}
-                  </span>
-                </div>
-                <span
-                  className={`mt-2 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide ${hasLocalSiang
-                    ? 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-500/40'
-                    : status2.isOpen
-                      ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                      : hariAbsen === 2
-                        ? 'bg-black/20 text-white border border-white/20'
-                        : 'bg-[#d8c3b7] dark:bg-[#442f25] text-[#5e473b] dark:text-[#c2afa4]'
-                    }`}
-                >
-                  {hasLocalSiang ? '✓ Sudah Absen' : status2.isOpen ? 'BUKA' : status2.message}
-                </span>
-              </button>
-            </div>
-          </div>
-
           {/* Sesi Closed Banner */}
           {!selectedSessionStatus.isOpen && (
             <div className="p-3 bg-amber-500/10 dark:bg-[#382012] border border-amber-500/30 dark:border-[#6b3816] rounded-xl text-amber-900 dark:text-[#fcd34d] text-xs flex items-center space-x-2">
               <Lock className="w-4 h-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
               <span>
-                Sesi {SESSION_SCHEDULES[hariAbsen].name} saat ini ditutup. ({selectedSessionStatus.message})
+                Absensi saat ini ditutup. ({selectedSessionStatus.message})
               </span>
             </div>
           )}
@@ -1278,7 +937,7 @@ export default function AttendanceForm() {
           {/* Submit / Action Button */}
           <button
             type="submit"
-            disabled={!isMounted || isLoading || fpStatus !== 'success' || !selectedSessionStatus.isOpen}
+            disabled={!isMounted || isLoading || !selectedSessionStatus.isOpen}
             className={`w-full py-4 px-4 rounded-2xl font-bold text-base sm:text-lg transition-all flex justify-center items-center mt-3 touch-manipulation min-h-[52px] ${!isMounted || !selectedSessionStatus.isOpen ? 'bg-[#e6dcda] dark:bg-[#38261e] border border-[#d6c7c1] dark:border-[#4a3429] text-[#85726a] dark:text-[#8e786d] cursor-not-allowed shadow-none'
               : 'bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] text-white shadow-lg shadow-orange-500/25 cursor-pointer'
               }`}
@@ -1286,10 +945,8 @@ export default function AttendanceForm() {
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin w-5 h-5 mr-2 flex-shrink-0" />
-                <span className="truncate">{gpsProgressText || 'Memproses Absensi...'}</span>
+                <span className="truncate">Memproses Absensi...</span>
               </>
-            ) : fpStatus !== 'success' ? (
-              <span>Menyiapkan Verifikasi...</span>
             ) : !selectedSessionStatus.isOpen ? (
               <span>Sesi Ditutup</span>
             ) : (
@@ -1394,108 +1051,20 @@ export default function AttendanceForm() {
               </div>
 
               <span className="text-[10px] sm:text-[11px] uppercase font-black tracking-widest text-white/90 bg-white/20 px-3 py-0.5 rounded-full mb-1">
-                {successModalData?.isEligible
-                  ? 'Kedua Sesi Selesai (100%)'
-                  : successModalData?.isAlreadyRecorded
-                    ? 'Telah Terdaftar di Database'
-                    : successModalData?.sesi === 'Pagi'
-                      ? 'Tahap 1 / 2 Selesai'
-                      : 'Sesi Siang Tercatat'}
+                {successModalData?.isAlreadyRecorded ? 'Telah Terdaftar di Database' : 'Absensi Tercatat'}
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                {successModalData?.isEligible
-                  ? 'Kedua Sesi Lengkap!'
-                  : successModalData?.isAlreadyRecorded
-                    ? 'Sudah Tercatat Absen!'
-                    : successModalData?.sesi === 'Pagi'
-                      ? 'Absensi Sesi Pagi Berhasil!'
-                      : 'Absensi Sesi Siang Berhasil!'}
+                {successModalData?.isAlreadyRecorded ? 'Sudah Tercatat Absen!' : 'Absensi Berhasil!'}
               </h2>
               <p className="text-white/90 text-xs sm:text-sm mt-1 max-w-xs font-medium leading-relaxed">
-                {successModalData?.isEligible
-                  ? 'Selamat! Anda telah menyelesaikan seluruh rangkaian absensi dan berhak atas E-Sertifikat resmi.'
-                  : successModalData?.isAlreadyRecorded
-                    ? `Data kehadiran Anda untuk Sesi ${successModalData?.sesi} sudah aman tersimpan di database.`
-                    : successModalData?.sesi === 'Pagi'
-                      ? 'Kehadiran Sesi Pagi telah disimpan. Jangan lupa absen kembali pada Sesi Siang.'
-                      : 'Kehadiran Anda telah sukses diverifikasi dan disimpan ke database.'}
+                {successModalData?.isAlreadyRecorded
+                  ? 'Data kehadiran Anda sudah aman tersimpan di database.'
+                  : 'Selamat! Kehadiran Anda telah sukses diverifikasi dan berhak atas E-Sertifikat resmi.'}
               </p>
             </div>
 
             {/* Scrollable Content Body */}
             <div className="p-5 sm:p-6 overflow-y-auto flex flex-col space-y-3.5">
-              {/* Status Tahapan Absensi: Sesi Pagi vs Sesi Siang */}
-              <div className="bg-[#efe7e2] dark:bg-[#34241d] rounded-2xl p-4 border border-[#decbc0] dark:border-[#4f382c] space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
-                    Tahapan Kehadiran
-                  </span>
-                  <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${successModalData?.isEligible
-                    ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                    : 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30'
-                    }`}>
-                    {successModalData?.isEligible ? '✓ 100% Lengkap (2/2 Sesi)' : '⏳ 50% Selesai (1/2 Sesi)'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Card Sesi Pagi */}
-                  <div className={`p-3 rounded-xl border flex flex-col justify-between ${(successModalData?.sesi === 'Pagi' || successModalData?.hasPagi || successModalData?.isEligible)
-                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200'
-                    : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
-                    }`}>
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider opacity-75">Sesi 1 (Pagi)</div>
-                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">{SESSION_SCHEDULES[1].startTime} - {SESSION_SCHEDULES[1].endTime}</div>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-emerald-500/20 text-xs font-bold">
-                      {(successModalData?.sesi === 'Pagi' || successModalData?.hasPagi || successModalData?.isEligible) ? (
-                        <span className="text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                          ✓ Selesai
-                        </span>
-                      ) : (
-                        <span className="text-zinc-500 flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                          Belum Absen
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Card Sesi Siang */}
-                  <div className={`p-3 rounded-xl border flex flex-col justify-between ${(successModalData?.isEligible || (successModalData?.sesi === 'Siang' && successModalData?.hasSiang))
-                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200'
-                    : (successModalData?.sesi === 'Pagi' || successModalData?.hasPagi)
-                      ? 'bg-amber-500/15 border-amber-500/50 text-amber-950 dark:text-amber-200'
-                      : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
-                    }`}>
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider opacity-75">Sesi 2 (Siang)</div>
-                      <div className="text-xs sm:text-sm font-extrabold mt-0.5">{SESSION_SCHEDULES[2].startTime} - {SESSION_SCHEDULES[2].endTime}</div>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-amber-500/30 text-xs font-bold">
-                      {(successModalData?.isEligible || (successModalData?.sesi === 'Siang' && successModalData?.hasSiang)) ? (
-                        <span className="text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                          ✓ Selesai
-                        </span>
-                      ) : (successModalData?.sesi === 'Pagi' || successModalData?.hasPagi) ? (
-                        <span className="text-amber-700 dark:text-amber-300 flex items-center gap-1 animate-pulse">
-                          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                          ⏳ Wajib Absen
-                        </span>
-                      ) : (
-                        <span className="text-zinc-500 flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                          Belum Absen
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Contextual Notice Banner: Certificate Celebration */}
               {successModalData?.isEligible ? (
                 <div className="p-4 bg-gradient-to-r from-amber-500/25 via-orange-500/25 to-amber-500/25 border-2 border-amber-500/60 rounded-2xl flex items-start space-x-3 text-left shadow-sm">
@@ -1523,18 +1092,6 @@ export default function AttendanceForm() {
 
               {/* Summary Details Card */}
               <div className="bg-[#efe7e2] dark:bg-[#34241d] rounded-2xl p-4 border border-[#decbc0] dark:border-[#4f382c] space-y-2.5 text-sm">
-                <div className="flex justify-between items-center pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
-                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
-                    Sesi Absensi
-                  </span>
-                  <span className={`px-3 py-0.5 font-extrabold text-xs sm:text-sm rounded-full ${successModalData?.isAlreadyRecorded
-                    ? 'bg-blue-500/20 border border-blue-500/40 text-blue-900 dark:text-blue-300'
-                    : 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-900 dark:text-emerald-300'
-                    }`}>
-                    Sesi {successModalData?.sesi}
-                  </span>
-                </div>
-
                 <div className="flex justify-between items-center pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
                   <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
                     Status / Peran
@@ -1707,45 +1264,23 @@ export default function AttendanceForm() {
                         </div>
                       </div>
 
-                      {/* Sessions Checklist */}
-                      <div className="space-y-2">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
-                          Status Sesi
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center ${checkResult.hasPagi
+                      {/* Attendance Status */}
+                      {(() => {
+                        const attended = !!(checkResult.hasPagi || checkResult.hasSiang);
+                        const waktu = checkResult.pagiWaktu || checkResult.siangWaktu;
+                        return (
+                          <div className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center ${attended
                             ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
                             : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
                             }`}>
-                            <span className="text-xs font-bold">Sesi Pagi</span>
-                            <span className={`text-[11px] font-extrabold mt-1 flex items-center gap-1 ${checkResult.hasPagi ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-500'
-                              }`}>
-                              {checkResult.hasPagi ? '✓ Sudah Absen' : '⏳ Belum Absen'}
-                            </span>
-                            {checkResult.hasPagi && checkResult.pagiWaktu && (
-                              <span className="text-[10px] font-mono text-emerald-700/80 dark:text-emerald-300/80 mt-0.5">
-                                {checkResult.pagiWaktu}
-                              </span>
+                            <span className="text-xs font-bold">Status Kehadiran</span>
+                            <span className="text-[11px] font-extrabold mt-1">{attended ? '✓ Sudah Absen' : '⏳ Belum Absen'}</span>
+                            {attended && waktu && (
+                              <span className="text-[10px] font-mono opacity-80 mt-0.5">{waktu}</span>
                             )}
                           </div>
-
-                          <div className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center ${checkResult.hasSiang
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
-                            : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
-                            }`}>
-                            <span className="text-xs font-bold">Sesi Siang</span>
-                            <span className={`text-[11px] font-extrabold mt-1 flex items-center gap-1 ${checkResult.hasSiang ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-500'
-                              }`}>
-                              {checkResult.hasSiang ? '✓ Sudah Absen' : '⏳ Belum Absen'}
-                            </span>
-                            {checkResult.hasSiang && checkResult.siangWaktu && (
-                              <span className="text-[10px] font-mono text-emerald-700/80 dark:text-emerald-300/80 mt-0.5">
-                                {checkResult.siangWaktu}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        );
+                      })()}
 
                       {/* Certificate Status */}
                       <div className={`p-3 rounded-xl border text-xs leading-relaxed flex items-start space-x-2 ${checkResult.eligibleForCertificate

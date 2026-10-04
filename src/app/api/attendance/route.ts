@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getDistanceInMeters, EVENT_LATITUDE, EVENT_LONGITUDE, MAX_DISTANCE_METERS } from '@/lib/haversine';
 import { getSessionStatus, SESSION_SCHEDULES } from '@/lib/schedule';
 import { v4 as uuidv4 } from 'uuid';
-import crypto from 'crypto';
 // ============================================
 // RATE LIMITING (Simple In-Memory Store)
 // ============================================
@@ -50,15 +48,12 @@ function isValidParticipantName(name: string): boolean {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, nama_peserta, role, nim_nip, Sesi, visitor_id, local_token, latitude, longitude, accuracy, timestamp, signature } = body;
+    const { email, nama_peserta, role, nim_nip, Sesi, local_token } = body;
 
-    // Check rate limit (Kombinasi 2 Lapis: IP dan Visitor ID)
+    // Rate limit berdasarkan IP (GPS & fingerprint perangkat dinonaktifkan)
     const ip = getRateLimitKey(req);
     const ipKey = `IP:${ip}`;
-    const fpKey = `FP:${visitor_id || 'unknown'}`;
 
-    // Lapisan 1: Limit IP (sangat longgar — keamanan utama ada di Geofencing + Jadwal + Unique Index NIM)
-    // 1.000/menit = akomodasi hingga 1.000 mahasiswa WiFi kampus yang berbagi 1 IP dalam 1 menit
     if (!checkRateLimit(ipKey, 1000)) {
       return NextResponse.json(
         { error: 'Terlalu banyak request dari jaringan ini. Silakan coba lagi dalam beberapa saat.' },
@@ -66,45 +61,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // Lapisan 2: Limit Perangkat (ketat untuk mencegah spam visitor_id palsu)
-    if (!checkRateLimit(fpKey, 10)) {
-      return NextResponse.json(
-        { error: 'Terlalu banyak request dari perangkat ini. Silakan coba lagi dalam beberapa saat.' },
-        { status: 429 }
-      );
-    }
-
     const isPanitiaRole = role === 'panitia_mahasiswa' || role === 'panitia_dosen';
 
     // 1. Basic Validation
-    if (!email || (!isPanitiaRole && !nama_peserta) || !nim_nip || !Sesi || !visitor_id || latitude === undefined || longitude === undefined || accuracy === undefined) {
+    if (!email || (!isPanitiaRole && !nama_peserta) || !nim_nip || !Sesi) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    // 1b. Anti-Replay Attack & Integrity Validation
-    if (!timestamp || !signature) {
-      return NextResponse.json({ error: 'Missing security parameters' }, { status: 400 });
-    }
-
-    const currentServerTime = Date.now();
-    if (Math.abs(currentServerTime - timestamp) > 1200000) { // Toleransi 20 menit (akomodasi network latency & drift jam HP)
-      return NextResponse.json({ error: 'Request kadaluarsa (terindikasi intercept)' }, { status: 403 });
-    }
-
-    const expectedMessage = `${latitude}|${longitude}|${accuracy}|${timestamp}|SECRET_SALT_2026`;
-    const expectedSignature = crypto.createHash('sha256').update(expectedMessage).digest('hex');
-
-    if (signature !== expectedSignature) {
-      return NextResponse.json({ error: 'Data request dimanipulasi!' }, { status: 403 });
-    }
-
-    // Validation Fake GPS / Mock Location (< 1m accuracy) & Weak Accuracy (> 150m accuracy)
-    const accuracyNumber = Number(accuracy);
-    if (!Number.isFinite(accuracyNumber) || accuracyNumber < 1.0) {
-      return NextResponse.json({ error: 'Terdeteksi lokasi tidak valid (Fake GPS / Mock Location). Harap gunakan GPS asli perangkat.' }, { status: 400 });
-    }
-    if (accuracyNumber > 150) {
-      return NextResponse.json({ error: `Sinyal GPS kurang akurat (${Math.round(accuracyNumber)}m). Harap aktifkan High Accuracy GPS.` }, { status: 400 });
     }
 
     if (!isPanitiaRole && !isValidParticipantName(String(nama_peserta))) {
@@ -112,28 +73,13 @@ export async function POST(req: Request) {
     }
 
     const allowedRoles = [
-      'panitia_mahasiswa',
-      'panitia_dosen',
-      'peserta_mahasiswa',
+      // Acara ini hanya untuk peserta (role panitia dinonaktifkan)
       'peserta_tendik',
       'peserta_dosen',
     ];
 
     if (!allowedRoles.includes(role)) {
       return NextResponse.json({ error: 'Role tidak valid.' }, { status: 400 });
-    }
-
-    const latitudeNumber = Number(latitude);
-    const longitudeNumber = Number(longitude);
-    if (
-      !Number.isFinite(latitudeNumber) ||
-      !Number.isFinite(longitudeNumber) ||
-      latitudeNumber < -90 ||
-      latitudeNumber > 90 ||
-      longitudeNumber < -180 ||
-      longitudeNumber > 180
-    ) {
-      return NextResponse.json({ error: 'Koordinat lokasi tidak valid.' }, { status: 400 });
     }
 
     // Validate email format
@@ -218,13 +164,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // 2. Geofencing Validation
-    const distance = getDistanceInMeters(latitudeNumber, longitudeNumber, EVENT_LATITUDE, EVENT_LONGITUDE);
-    if (distance > MAX_DISTANCE_METERS) {
-      return NextResponse.json({
-        error: `Lokasi Anda terlalu jauh dari lokasi acara (${Math.round(distance)} meter). Jarak maksimal adalah ${MAX_DISTANCE_METERS} meter.`
-      }, { status: 400 });
-    }
+    // 2. Geofencing dinonaktifkan untuk acara ini.
 
     // 3. Anti-Cheat Validations are handled by Supabase UNIQUE INDEX constraint.
 
@@ -240,10 +180,7 @@ export async function POST(req: Request) {
         role,
         nim_nip: cleanNimNip,
         Sesi: sesiName,
-        visitor_id,
-        local_token: newToken,
-        latitude: latitudeNumber,
-        longitude: longitudeNumber
+        local_token: newToken
       });
 
     // Helper untuk mengecek kelayakan sertifikat (Sesi Pagi selesai)
