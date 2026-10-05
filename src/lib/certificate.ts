@@ -67,7 +67,7 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
             }
             return word.charAt(0).toUpperCase() + word.slice(1);
           });
-          
+
           // Cek apakah ini sertifikat pengabdian secara umum (untuk atur ukuran font max)
           const isPengabdianCertificate = imageUrl.includes('Pengabdian.png');
           const isRelawanPengabdian = imageUrl === '/Relawan_Pengabdian.png';
@@ -86,7 +86,7 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
           const xPos = canvas.width / 2;
 
           // KHUSUS Relawan Pengabdian naik ke 0.28, sisanya (termasuk Peserta Pengabdian) tetap di 0.31 atau 0.30
-          let yMultiplier = 0.31;
+          let yMultiplier = 0.27;
           if (isRelawanPengabdian) {
             yMultiplier = 0.30; // Cuma Relawan Pengabdian yang naik!
           } else if (isPengabdianCertificate) {
