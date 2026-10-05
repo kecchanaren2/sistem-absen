@@ -73,8 +73,8 @@ export async function POST(req: Request) {
     // Query attendance records for this NIM/NIP
     let { data: attendanceRecords, error } = await supabaseAdmin
       .from('attendance')
-      .select('Sesi, nama_peserta, role, nim_nip, email, created_at')
-      .eq('nim_nip', cleanNimNip);
+      .select('name, peran, "NIM/NIP", email, waktu_date')
+      .eq('NIM/NIP', cleanNimNip);
 
     // Jika tidak ditemukan di attendance, cari di rekap_gabungan
     if (!attendanceRecords || attendanceRecords.length === 0) {
@@ -97,44 +97,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Data absensi tidak ditemukan untuk NIM/NIP tersebut. Pastikan NIM yang Anda masukkan sama persis dengan data form.' }, { status: 404 });
     }
 
-    // Helper pendeteksi sesi yang fleksibel
-    const isPagiSesi = (s?: string, created?: string) => {
-      const str = String(s || '').trim().toLowerCase();
-      const isMorning = created && new Date(created).getTime() < new Date('2026-09-28T02:00:00Z').getTime();
-      return str.startsWith('pagi') || str === '1' || isMorning;
-    };
-    const isSiangSesi = (s?: string) => {
-      const str = String(s || '').trim().toLowerCase();
-      return str.startsWith('siang') || str === '2';
-    };
-
-    let hasPagi = attendanceRecords.some((r) => isPagiSesi(r.Sesi, r.created_at));
-    const hasSiang = attendanceRecords.some((r) => isSiangSesi(r.Sesi));
-
-    // Fallback: Jika Sesi Pagi belum terdeteksi dari NIM saja, cek berdasarkan Email
-    // (Menyelamatkan peserta yang salah ketik NIM saat Sesi Pagi)
-    const attendeeEmail = attendanceRecords[0]?.email;
-    if (!hasPagi && attendeeEmail) {
-      const { data: emailRecords } = await supabaseAdmin
-        .from('attendance')
-        .select('Sesi, created_at')
-        .ilike('email', String(attendeeEmail).trim().toLowerCase());
-
-      if (emailRecords && emailRecords.some((r) => isPagiSesi(r.Sesi, r.created_at))) {
-        hasPagi = true;
-      }
-    }
-
-    // Siapapun asalkan sudah absensi di pagi atau siang hari dapat menerima sertifikat
-    const isEligible = hasPagi || hasSiang || attendanceRecords.length > 0;
+    // Siapapun asalkan sudah absensi dapat menerima sertifikat
+    const isEligible = attendanceRecords.length > 0;
 
     if (isEligible) {
       // Panitia names must always come from the whitelist, never from form input.
       const firstRecord = attendanceRecords[0];
-      let namaPeserta = firstRecord.nama_peserta;
+      let namaPeserta = firstRecord.name || firstRecord.nama_peserta;
 
       // Normalize role name to handle CSV inconsistencies (e.g. "Peserta Dosen" -> "peserta_dosen")
-      let rawRole = firstRecord.role || 'peserta_mahasiswa';
+      let rawRole = firstRecord.peran || firstRecord.role || 'peserta_mahasiswa';
       let normalizedRole = String(rawRole).toLowerCase().trim().replace(/\s+/g, '_');
 
       if (normalizedRole === 'panitia_mahasiswa') {
