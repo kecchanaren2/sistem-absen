@@ -603,113 +603,106 @@ export default function AttendanceForm() {
   const isDosenRole = role === 'panitia_dosen' || role === 'peserta_dosen' || role === 'peserta_tendik';
 
   return (
-    <div className="w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-[760px] mx-auto flex flex-col bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl sm:rounded-[28px] md:rounded-[32px] shadow-2xl overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] transition-all duration-300">
-      {/* Header Banner with Exact Figma Gradient and Vector Iconography */}
-      <div
-        className="relative px-6 sm:px-8 md:px-10 pt-8 sm:pt-9 md:pt-10 pb-9 sm:pb-10 md:pb-11 text-white text-center flex flex-col items-center justify-center overflow-hidden"
-        style={{
-          backgroundImage: 'linear-gradient(156.67deg, rgb(218, 60, 46) 0%, rgb(246, 207, 47) 100%)'
-        }}
-      >
-        {/* Dies Iconograph Vector Background Overlay */}
-        <div className="-translate-x-1/2 -translate-y-1/2 absolute h-[576px] md:h-[680px] left-1/2 top-1/2 w-[487px] md:w-[600px] pointer-events-none opacity-85 mix-blend-screen select-none">
-          <img
-            alt=""
-            src="/dies-iconograph.svg"
-            className="absolute block inset-0 max-w-none size-full object-contain"
-          />
-        </div>
-
-        {/* Ambient Blur Lights */}
-        <div className="absolute bg-white/10 blur-[40px] -right-8 -top-8 rounded-full size-32 md:size-48 pointer-events-none" />
-        <div className="absolute bg-[#ffee7c]/20 blur-[40px] -left-8 -bottom-8 rounded-full size-32 md:size-48 pointer-events-none" />
-
-
+    <div className="w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-[760px] mx-auto flex flex-col bg-[#f8f8fc] dark:bg-[#14182b] rounded-3xl sm:rounded-[28px] md:rounded-[32px] shadow-[0px_12px_32px_-12px_rgba(0,0,0,0.07)] dark:shadow-[0px_12px_32px_-12px_rgba(0,0,0,0.5)] overflow-hidden border border-[#d2d4eb] dark:border-[#262d49] transition-all duration-200">
+      {/* Header Banner with Exact Figma Gradient (from #4c95e6 to #0467ff) */}
+      <div className="relative px-5 sm:px-6 md:px-8 pt-6 sm:pt-7 md:pt-8 pb-7 sm:pb-8 text-white text-center flex flex-col items-center justify-center overflow-hidden bg-gradient-to-r from-[#4c95e6] to-[#0467ff] dark:from-[#2563eb] dark:to-[#1d4ed8]">
         {/* Top Header Actions */}
         {isMounted && (
-          <div className="absolute inset-x-3 top-3 z-20 flex items-start justify-between gap-2 sm:inset-x-4 sm:top-4">
+          <div className="w-full flex items-center justify-between gap-2 mb-4">
             {/* QR Code Widget — pojok kiri atas card */}
             <QRCodeWidget
               logoUrl="/qr.png"
-              colorDark="#114084"
+              colorDark="#0467ff"
               displaySize={64}
-              downloadFilename="qr-absensi-dies64.png"
+              downloadFilename="qr-absensi-workshop.png"
               showDownload={true}
               label=""
             />
+
+            {/* Crisp Logo Capsule — 6 Logos on clean white backdrop matching Figma */}
+            <div className="bg-white drop-shadow-[0px_1px_1.5px_rgba(0,0,0,0.1)] flex items-center justify-center gap-2.5 sm:gap-3.5 md:gap-4 px-3 sm:px-5 py-1.5 sm:py-2 rounded-full sm:rounded-[24px]">
+              <img
+                src="/logo/Tut Wuri.webp"
+                alt="Logo Tut Wuri"
+                className="h-5 sm:h-6 md:h-7 w-auto object-contain pointer-events-none"
+                width={27}
+                height={27}
+                loading="eager"
+              />
+              <img
+                src="/logo/unud.png"
+                alt="Logo UNUD"
+                className="h-5 sm:h-6 md:h-7 w-auto object-contain pointer-events-none"
+                width={24}
+                height={27}
+                loading="eager"
+              />
+              <img
+                src="/logo/diktisaintek.png"
+                alt="Logo Diktisaintek"
+                className="h-5 sm:h-6 md:h-7 w-auto object-contain pointer-events-none"
+                width={32}
+                height={27}
+                loading="eager"
+              />
+              <img
+                src="/logo/ptnbh.png"
+                alt="Logo PTNBH"
+                className="h-5 sm:h-6 md:h-7 w-auto object-contain pointer-events-none"
+                width={38}
+                height={27}
+                loading="eager"
+              />
+              <img
+                src="/logo/Logo Pelayanan 1.png"
+                alt="Logo Pelayanan 1"
+                className="h-5 sm:h-6 md:h-7 w-auto object-contain pointer-events-none"
+                width={24}
+                height={27}
+                loading="eager"
+              />
+              <img
+                src="/logo/logo workshop.png"
+                alt="logo workshop"
+                className="h-5 sm:h-6 md:h-7 w-auto object-contain pointer-events-none"
+                width={33}
+                height={27}
+                loading="eager"
+              />
+            </div>
 
             {/* Theme Toggle Button — pojok kanan atas */}
             <button
               type="button"
               onClick={toggleTheme}
               aria-label="Toggle Dark / Light Mode"
-              className="absolute top-4 right-4 z-20 !min-h-0 !min-w-0 p-[5px] sm:p-1.5 rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center"
+              className="!min-h-0 !min-w-0 p-[5px] sm:p-1.5 rounded-full bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-150 active:scale-90 shadow-sm flex items-center justify-center cursor-pointer"
             >
               {isDark ? (
-                <Sun className="w-4 h-4 text-yellow-100 transition-transform duration-300 rotate-0 hover:rotate-45" />
+                <Sun className="w-4 h-4 text-white transition-transform duration-200 hover:rotate-45" />
               ) : (
-                <Moon className="w-4 h-4 text-white transition-transform duration-300 rotate-0 hover:-rotate-12" />
+                <Moon className="w-4 h-4 text-white transition-transform duration-200 hover:-rotate-12" />
               )}
             </button>
           </div>
         )}
 
-        {/* Frosted Logo Banner Capsule */}
-        <div className="relative z-10 backdrop-blur-[12px] bg-white/35 border border-white/40 flex items-center justify-center gap-3.5 sm:gap-4 md:gap-5 px-5 sm:px-6 md:px-7 py-2 sm:py-2.5 rounded-[22px] md:rounded-[24px] mb-4 md:mb-5 shadow-sm">
-          {/* Tut Wuri */}
-          <img
-            src="/logo/Tut Wuri.webp"
-            alt="Logo Tut Wuri"
-            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
-          />
-          {/* UNUD */}
-          <img
-            src="/logo/unud.png"
-            alt="Logo UNUD"
-            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
-          />
-          {/* Diktisaintek */}
-          <img
-            src="/logo/diktisaintek.png"
-            alt="Logo Diktisaintek"
-            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
-          />
-          {/* PTNBH */}
-          <img
-            src="/logo/ptnbh.png"
-            alt="Logo PTNBH"
-            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
-          />
-          {/* Logo Pelayanan 1 */}
-          <img
-            src="/logo/Logo Pelayanan 1.png"
-            alt="Logo Pelayanan 1"
-            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
-          />
-          {/* Workshop */}
-          <img
-            src="/logo/logo workshop.png"
-            alt="logo workshop"
-            className="h-8 sm:h-8 md:h-9 w-auto object-contain"
-          />
-        </div>
-
         {/* Main Title */}
-        <h2 className="relative z-10 text-3xl sm:text-4xl md:text-[2.6rem] font-extrabold tracking-[-0.75px] md:tracking-[-1px] text-white drop-shadow-sm mb-2 leading-none">
+        <h2 className="relative z-10 text-3xl sm:text-4xl md:text-[40px] font-extrabold tracking-[-1px] text-white drop-shadow-xs mb-2 leading-none">
           PORTAL ABSENSI
         </h2>
 
         {/* Live Clock Server Time Badge */}
         {currentTime && (
-          <div className="relative z-10 mt-1 flex items-center space-x-1.5 backdrop-blur-[12px] bg-black/25 dark:bg-black/35 px-3.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm text-orange-50 font-mono border border-white/20 shadow-xs">
-            <Clock className="w-3.5 h-3.5 text-yellow-200" />
+          <div className="relative z-10 mt-1 flex items-center space-x-1.5 bg-black/25 dark:bg-black/35 px-3.5 sm:px-4 py-1 rounded-full text-xs font-mono text-[#edeeff] border border-white/20 shadow-xs">
+            <Clock className="w-3.5 h-3.5 text-blue-200" />
             <span>Waktu Server: {currentTime} WITA</span>
           </div>
         )}
       </div>
 
       {/* Body Content */}
-      <div className="p-5 sm:p-7 md:p-9 flex flex-col space-y-5 md:space-y-6">
+      <div className="p-5 sm:p-7 md:p-8 flex flex-col space-y-4 sm:space-y-5 bg-[#f8f8fc] dark:bg-[#14182b]">
         {/* Local Device History Banner (0 network & 0 server cost) */}
         {localHistory && (
           <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm flex items-start justify-between gap-3 shadow-xs">
@@ -776,19 +769,19 @@ export default function AttendanceForm() {
 
         {/* Certificate Card */}
         {eligibleForCertificate && (
-          <div className="p-5 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-orange-950/40 dark:via-amber-950/40 dark:to-yellow-950/40 rounded-2xl border border-orange-200/80 dark:border-orange-800/60 text-center shadow-md">
-            <div className="inline-flex p-2 bg-orange-100 dark:bg-orange-900/60 rounded-full mb-2 text-orange-600 dark:text-orange-300">
+          <div className="p-5 bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50 dark:from-blue-950/40 dark:via-indigo-950/40 dark:to-blue-950/40 rounded-2xl border border-blue-200/80 dark:border-blue-800/60 text-center shadow-md">
+            <div className="inline-flex p-2 bg-blue-100 dark:bg-blue-900/60 rounded-full mb-2 text-[#0066ff] dark:text-blue-300">
               <Award className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-[#3d2417] dark:text-orange-100 mb-1">
+            <h3 className="text-lg font-bold text-[#18192c] dark:text-[#f1f3fd] mb-1">
               Selamat! Anda Berhak E-Sertifikat 🎉
             </h3>
-            <p className="text-[#69422f] dark:text-orange-300 text-xs mb-4 leading-relaxed">
+            <p className="text-[#5d5f7e] dark:text-[#9aa0c2] text-xs mb-4 leading-relaxed">
               Seluruh sesi absensi Anda telah tercatat. Silakan unduh sertifikat melalui Portal Sertifikat.
             </p>
             <a
               href="/sertifikat"
-              className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 active:scale-[0.98] text-white py-3.5 px-4 rounded-xl font-bold transition-all shadow-md shadow-orange-500/20 touch-manipulation"
+              className="w-full flex items-center justify-center space-x-2 bg-[#0066ff] hover:bg-[#0052cc] active:scale-[0.98] text-white py-3.5 px-4 rounded-xl font-bold transition-all shadow-md shadow-blue-500/20 touch-manipulation cursor-pointer"
             >
               <Award className="w-4 h-4" />
               <span>Buka Portal Sertifikat</span>
@@ -800,7 +793,7 @@ export default function AttendanceForm() {
         <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
           {/* Status / Peran — Custom Dropdown */}
           <div className="flex flex-col space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
+            <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
               STATUS / PERAN
             </label>
             <div className="relative" ref={roleDropdownRef}>
@@ -809,27 +802,27 @@ export default function AttendanceForm() {
                 type="button"
                 id="role-dropdown-btn"
                 onClick={() => setRoleOpen((o) => !o)}
-                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-sm font-semibold transition-all touch-manipulation active:scale-[0.99] cursor-pointer bg-[#efe7e2] dark:bg-[#34241d] shadow-xs ${roleOpen
-                  ? 'border-orange-500 ring-2 ring-orange-500/20 text-[#2c1e18] dark:text-[#f5ece7] dark:border-orange-500'
-                  : 'border-[#decbc0] dark:border-[#4f382c] text-[#2c1e18] dark:text-[#f5ece7] hover:border-orange-400 dark:hover:border-orange-500'
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl border text-sm font-semibold transition-all touch-manipulation active:scale-[0.99] cursor-pointer bg-[#e2e3ef] dark:bg-[#1c223c] shadow-xs ${roleOpen
+                  ? 'border-[#0066ff] ring-2 ring-[#0066ff]/20 text-[#18192c] dark:text-[#eef0fb] dark:border-[#0066ff]'
+                  : 'border-[#c0c2de] dark:border-[#323b63] text-[#18192c] dark:text-[#eef0fb] hover:border-[#0066ff]/60'
                   }`}
               >
                 <span className="flex items-center space-x-2.5">
-                  <UserCheck className="w-4 h-4 flex-shrink-0 text-orange-500" />
+                  <UserCheck className="w-4 h-4 flex-shrink-0 text-[#0066ff] dark:text-[#60a5fa]" />
                   <span>{selectedRole.label}</span>
                 </span>
                 <ChevronDown
-                  className={`w-4 h-4 text-[#8f7d73] dark:text-[#a39086] transition-transform duration-200 ${roleOpen ? 'rotate-180' : ''
+                  className={`w-4 h-4 text-[#5d5f7e] dark:text-[#9aa0c2] transition-transform duration-200 ${roleOpen ? 'rotate-180' : ''
                     }`}
                 />
               </button>
 
               {/* Dropdown panel */}
               {roleOpen && (
-                <div className="absolute z-50 left-0 right-0 mt-1.5 rounded-2xl border border-[#decbc0] dark:border-[#4f382c] bg-[#fcfaf8] dark:bg-[#2b1c16] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute z-50 left-0 right-0 mt-1.5 rounded-2xl border border-[#c0c2de] dark:border-[#323b63] bg-[#f8f8fc] dark:bg-[#191f37] shadow-xl overflow-hidden animate-in fade-in duration-100">
                   {/* Peserta group */}
                   <div className="px-3 pt-2.5 pb-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#9d8a80] dark:text-[#8f7e75]">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#5d5f7e] dark:text-[#9aa0c2]">
                       Peserta
                     </span>
                   </div>
@@ -843,12 +836,12 @@ export default function AttendanceForm() {
                         setRoleOpen(false);
                       }}
                       className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation cursor-pointer active:scale-[0.99] ${role === r.value
-                        ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 font-bold'
-                        : 'text-[#3d2b22] dark:text-[#e5d8d0] hover:bg-[#efe7e2] dark:hover:bg-[#38261e]'
+                        ? 'bg-blue-50 dark:bg-blue-950/40 text-[#0066ff] dark:text-blue-300 font-bold'
+                        : 'text-[#18192c] dark:text-[#eef0fb] hover:bg-[#e2e3ef] dark:hover:bg-[#252c4c]'
                         }`}
                     >
                       <span
-                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${role === r.value ? 'bg-orange-500' : 'bg-[#decbc0] dark:bg-[#4f382c]'
+                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${role === r.value ? 'bg-[#0066ff]' : 'bg-[#c0c2de] dark:bg-[#323b63]'
                           }`}
                       />
                       <span>{r.label}</span>
@@ -862,7 +855,7 @@ export default function AttendanceForm() {
 
           {/* Nama Lengkap Input untuk peserta */}
           {!isPanitiaRole && <div className="flex flex-col space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
+            <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
               NAMA LENGKAP
             </label>
             <input
@@ -873,7 +866,7 @@ export default function AttendanceForm() {
               onChange={(e) => {
                 setNamaPeserta(e.target.value.replace(/[^\p{L}\p{M} '\u2019-]/gu, ''));
               }}
-              className={`w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-[#decbc0] dark:border-[#4f382c] focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] transition-all shadow-xs touch-manipulation ${isPanitiaRole ? 'cursor-not-allowed opacity-80' : ''}`}
+              className={`w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation ${isPanitiaRole ? 'cursor-not-allowed opacity-80' : ''}`}
               placeholder={isPanitiaRole ? 'Nama akan muncul setelah NIM/NIP valid' : 'Masukkan nama sesuai identitas'}
               autoComplete="name"
             />
@@ -882,11 +875,11 @@ export default function AttendanceForm() {
           {/* Email Input */}
           <div className="flex flex-col space-y-1">
             <div className="flex flex-col">
-              <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
+              <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
                 EMAIL
               </label>
-              <span className="text-[11px] text-[#9a7d6d] dark:text-[#c4a492] font-medium italic mt-0.5">
-                *Email akan digunakan untuk sertifikat
+              <span className="text-[11px] text-[#6d709a] dark:text-[#8a92b5] font-medium mt-0.5">
+                *Email akan digunakan untuk mengirim sertifikat
               </span>
             </div>
             <input
@@ -894,7 +887,7 @@ export default function AttendanceForm() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-[#decbc0] dark:border-[#4f382c] focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] transition-all shadow-xs touch-manipulation mt-0.5"
+              className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation mt-0.5"
               placeholder="email@contoh.com"
               autoComplete="email"
             />
@@ -902,7 +895,7 @@ export default function AttendanceForm() {
 
           {/* NIM / NIP Input */}
           <div className="flex flex-col space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
+            <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
               {isDosenRole ? 'NIP' : 'NIM'}
             </label>
             <input
@@ -914,7 +907,7 @@ export default function AttendanceForm() {
                 setNimNip(e.target.value.replace(/\D/g, ''));
               }}
               onBlur={handleNimBlur}
-              className="w-full px-4 py-3.5 text-sm sm:text-base rounded-xl border border-[#decbc0] dark:border-[#4f382c] focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] transition-all shadow-xs touch-manipulation font-mono tracking-wider"
+              className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation font-mono tracking-wider"
               placeholder={isDosenRole ? 'Misal: 1981100720081210001' : 'Misal: 1234567890'}
               autoComplete="off"
             />
@@ -922,8 +915,8 @@ export default function AttendanceForm() {
 
           {/* Sesi Closed Banner */}
           {!selectedSessionStatus.isOpen && (
-            <div className="p-3 bg-amber-500/10 dark:bg-[#382012] border border-amber-500/30 dark:border-[#6b3816] rounded-xl text-amber-900 dark:text-[#fcd34d] text-xs flex items-center space-x-2">
-              <Lock className="w-4 h-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="p-3 bg-[rgba(0,17,254,0.08)] dark:bg-blue-950/40 border border-[rgba(0,17,254,0.25)] dark:border-blue-800/40 rounded-xl text-[#060e7b] dark:text-blue-200 text-xs flex items-center space-x-2">
+              <Lock className="w-4 h-4 flex-shrink-0 text-[#0467ff] dark:text-blue-400" />
               <span>
                 Absensi saat ini ditutup. ({selectedSessionStatus.message})
               </span>
@@ -934,8 +927,9 @@ export default function AttendanceForm() {
           <button
             type="submit"
             disabled={!isMounted || isLoading || !selectedSessionStatus.isOpen}
-            className={`w-full py-4 px-4 rounded-2xl font-bold text-base sm:text-lg transition-all flex justify-center items-center mt-3 touch-manipulation min-h-[52px] ${!isMounted || !selectedSessionStatus.isOpen ? 'bg-[#e6dcda] dark:bg-[#38261e] border border-[#d6c7c1] dark:border-[#4a3429] text-[#85726a] dark:text-[#8e786d] cursor-not-allowed shadow-none'
-              : 'bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] text-white shadow-lg shadow-orange-500/25 cursor-pointer'
+            className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm sm:text-base transition-all flex justify-center items-center mt-2 touch-manipulation min-h-[46px] ${!isMounted || !selectedSessionStatus.isOpen
+              ? 'bg-[#dadbe6] dark:bg-[#202538] border border-[#c1c2d6] dark:border-[#313a57] text-[#6a6c85] dark:text-[#717b99] cursor-not-allowed shadow-none'
+              : 'bg-[#0066ff] hover:bg-[#0052cc] active:scale-[0.98] text-white shadow-md shadow-blue-500/25 cursor-pointer'
               }`}
           >
             {isLoading ? (
@@ -949,13 +943,13 @@ export default function AttendanceForm() {
               <span>Absen Sekarang</span>
             )}
           </button>
-          <span className="text-[11px] text-[#9a7d6d] dark:text-[#c4a492] font-medium italic mt-0.5">
+          <span className="text-[11px] text-[#6d709a] dark:text-[#8a92b5] font-medium text-center sm:text-left mt-0.5">
             *setelah absensi, e-sertifikat dapat diunduh melalui portal sertifikat
           </span>
 
           <a
             href="/sertifikat"
-            className="w-full py-3 px-4 rounded-2xl font-bold text-sm sm:text-base transition-all flex justify-center items-center border border-[#d7bca8] dark:border-[#4f382c] bg-[#f3e7e1] dark:bg-[#2c1d17] text-[#4d352b] dark:text-[#f5ece7] hover:bg-[#ebdfd8] dark:hover:bg-[#362620] active:scale-[0.98] shadow-sm"
+            className="w-full py-3 px-4 rounded-xl font-bold text-sm sm:text-base transition-all flex justify-center items-center border border-[#a8abd7] dark:border-[#363f68] bg-[#e1e2f3] dark:bg-[#1e243d] text-[#2b2d4d] dark:text-[#c7d2fe] hover:bg-[#d6d8ee] dark:hover:bg-[#273050] active:scale-[0.98] shadow-xs"
           >
             Portal Sertifikat
           </a>
@@ -968,38 +962,43 @@ export default function AttendanceForm() {
               setCheckResult(null);
               setShowCheckModal(true);
             }}
-            className="w-full py-3 px-4 rounded-2xl font-bold text-sm sm:text-base transition-all flex justify-center items-center gap-2 border border-[#d7bca8] dark:border-[#4f382c] bg-white/70 dark:bg-[#1f140f] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#efe7e2] dark:hover:bg-[#2c1d17] active:scale-[0.98] shadow-xs cursor-pointer touch-manipulation"
+            className="w-full py-3 px-4 rounded-xl font-bold text-sm sm:text-base transition-all flex justify-center items-center gap-2 border border-[#a8abd7] dark:border-[#363f68] bg-white/70 dark:bg-[#181d33]/80 text-[#393b5a] dark:text-[#cbd5e1] hover:bg-white dark:hover:bg-[#1e243d] active:scale-[0.98] shadow-xs cursor-pointer touch-manipulation"
           >
-            <Search className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <Search className="w-4 h-4 text-[#0066ff] dark:text-[#60a5fa]" />
             <span>Cek Status Kehadiran Saya</span>
           </button>
         </form>
       </div>
 
-      {/* Custom Confirm Modal */}
+      {/* Custom Confirm Modal — Lightweight Figma style */}
       {showConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] animate-in zoom-in-95 duration-200">
-            <div className="p-6 text-center">
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
-                <AlertCircle className="h-8 w-8 text-amber-600 dark:text-amber-500" />
-              </div>
-              <h3 className="text-xl font-extrabold text-[#2c1e18] dark:text-[#f5ece7] mb-2">Konfirmasi Absensi</h3>
-              <p className="text-sm text-[#7e695d] dark:text-[#b09d92] font-medium mb-6 leading-relaxed">
-                PASTIKAN DATA ANDA SUDAH <strong className="text-amber-600 dark:text-amber-500">100% BENAR</strong>.<br />Absen hanya bisa dilakukan 1x per sesi dan tidak dapat diubah kembali.
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-in fade-in duration-150">
+          <div className="bg-[#f8f8fc] dark:bg-[#14182b] rounded-[16px] shadow-2xl w-full max-w-[340px] sm:max-w-[350px] overflow-hidden border border-[#d2d4eb] dark:border-[#262d49] animate-in zoom-in-95 duration-150 flex flex-col">
+            {/* Header matching Figma */}
+            <div className="bg-gradient-to-r from-[#4c95e6] to-[#0467ff] dark:from-[#2563eb] dark:to-[#1d4ed8] px-4 pt-7 pb-6 flex flex-col items-center justify-center text-center text-white shrink-0">
+              <h3 className="font-extrabold text-[22px] leading-6 text-white text-center">
+                Konfirmasi Absensi
+              </h3>
+              <p className="font-normal text-[11px] leading-3 text-[#edeeff] text-center mt-1.5">
+                Pastikan data kehadiran Anda sudah 100% benar
               </p>
-              <div className="flex flex-col gap-3">
+            </div>
+            <div className="p-[18px] flex flex-col space-y-3 text-center">
+              <div className="bg-[#f2f3f6] dark:bg-[#1c223c] border border-[#c0c2de] dark:border-[#323b63] rounded-[12px] p-3 text-xs text-[#5d5f7e] dark:text-[#9aa0c2] leading-relaxed">
+                Absen hanya bisa dilakukan 1x per sesi dan tidak dapat diubah kembali setelah dikirim.
+              </div>
+              <div className="flex flex-col gap-2 pt-1">
                 <button
                   type="button"
                   onClick={executeSubmit}
-                  className="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] transition-all shadow-lg shadow-orange-500/25"
+                  className="bg-gradient-to-r from-[#4c95e6] to-[#0467ff] hover:from-[#3b82f6] hover:to-[#0252cc] text-white rounded-[10px] h-[46px] font-bold text-[12px] flex items-center justify-center shadow-sm active:scale-[0.98] transition-all cursor-pointer"
                 >
                   Yakin, Kirim Sekarang
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowConfirm(false)}
-                  className="w-full py-3.5 px-4 rounded-xl font-bold text-[#5a4439] dark:text-[#c9b8ae] bg-[#efe7e2] dark:bg-[#34241d] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23] active:scale-[0.98] transition-all"
+                  className="bg-[#e2e3ef] dark:bg-[#1c223c] border border-[#c0c2de] dark:border-[#323b63] text-[#6a6c85] dark:text-[#9aa0c2] hover:text-[#18192c] dark:hover:text-white rounded-[12px] h-[44px] font-bold text-[11px] flex items-center justify-center transition-all cursor-pointer"
                 >
                   Batal, Cek Lagi
                 </button>
@@ -1009,320 +1008,242 @@ export default function AttendanceForm() {
         </div>
       )}
 
-      {/* Large Automatic Success Modal */}
+      {/* Absensi Berhasil Modal (Figma node 254:1284) */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl sm:rounded-[32px] shadow-2xl w-full max-w-md sm:max-w-lg overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            {/* Header Ribbon / Banner */}
-            <div className={`relative px-6 pt-7 pb-6 text-white text-center flex flex-col items-center justify-center overflow-hidden flex-shrink-0 ${successModalData?.isEligible
-              ? 'bg-gradient-to-br from-amber-500 via-orange-600 to-amber-700'
-              : successModalData?.isAlreadyRecorded
-                ? 'bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700'
-                : 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700'
-              }`}>
-              {/* Close Button X */}
-              <button
-                type="button"
-                onClick={() => setShowSuccessModal(false)}
-                className="absolute top-3.5 right-3.5 text-white/80 hover:text-white p-2 rounded-full hover:bg-white/15 transition-all touch-manipulation active:scale-95 cursor-pointer"
-                aria-label="Tutup popup"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              {/* Big Animated Icon */}
-              <div className={`h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white flex items-center justify-center shadow-xl mb-3 ring-8 ring-white/20 ${successModalData?.isEligible
-                ? 'text-amber-600 shadow-amber-950/20'
-                : successModalData?.isAlreadyRecorded
-                  ? 'text-blue-600 shadow-blue-950/20'
-                  : 'text-emerald-600 shadow-emerald-950/20'
-                }`}>
-                {successModalData?.isEligible ? (
-                  <Award className="w-10 h-10 sm:w-12 sm:h-12 text-amber-600 stroke-[2.5]" />
-                ) : successModalData?.isAlreadyRecorded ? (
-                  <ShieldCheck className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 stroke-[2.5]" />
-                ) : (
-                  <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-emerald-600 stroke-[2.5]" />
-                )}
-              </div>
-
-              <span className="text-[10px] sm:text-[11px] uppercase font-black tracking-widest text-white/90 bg-white/20 px-3 py-0.5 rounded-full mb-1">
-                {successModalData?.isAlreadyRecorded ? 'Telah Terdaftar di Database' : 'Absensi Tercatat'}
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 animate-in fade-in duration-150">
+          <div className="bg-[#f8f8fc] dark:bg-[#14182b] rounded-[16px] shadow-2xl w-full max-w-[340px] sm:max-w-[350px] overflow-hidden border border-[#d2d4eb] dark:border-[#262d49] animate-in zoom-in-95 duration-150 flex flex-col">
+            {/* Header matching Figma */}
+            <div className="bg-gradient-to-r from-[#4c95e6] to-[#0467ff] dark:from-[#2563eb] dark:to-[#1d4ed8] px-4 pt-7 pb-6 flex flex-col items-center justify-center text-center text-white shrink-0">
+              <h3 className="font-extrabold text-[22px] leading-6 text-white text-center">
                 {successModalData?.isAlreadyRecorded ? 'Sudah Tercatat Absen!' : 'Absensi Berhasil!'}
-              </h2>
-              <p className="text-white/90 text-xs sm:text-sm mt-1 max-w-xs font-medium leading-relaxed">
+              </h3>
+              <p className="font-normal text-[11px] leading-3 text-[#edeeff] text-center mt-1.5">
                 {successModalData?.isAlreadyRecorded
-                  ? 'Data kehadiran Anda sudah aman tersimpan di database.'
-                  : 'Selamat! Kehadiran Anda telah sukses diverifikasi dan berhak atas E-Sertifikat resmi.'}
+                  ? 'Data kehadiran Anda sudah aman tersimpan'
+                  : 'Kehadiran Anda telah sukses diverifikasi'}
               </p>
             </div>
 
-            {/* Scrollable Content Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto flex flex-col space-y-3.5">
-              {/* Contextual Notice Banner: Certificate Celebration */}
-              {successModalData?.isEligible ? (
-                <div className="p-4 bg-gradient-to-r from-amber-500/25 via-orange-500/25 to-amber-500/25 border-2 border-amber-500/60 rounded-2xl flex items-start space-x-3 text-left shadow-sm">
-                  <Award className="w-7 h-7 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <h4 className="font-extrabold text-sm sm:text-base text-amber-950 dark:text-amber-200">
-                      Kehadiran Terverifikasi! 🎉
-                    </h4>
-                    <p className="text-xs sm:text-[13px] text-amber-900/90 dark:text-amber-100/90 leading-relaxed">
-                      Selamat! Kehadiran presensi Anda telah terverifikasi secara resmi untuk penerbitan E-Sertifikat.
-                    </p>
-                    <p className="text-xs font-bold text-amber-800 dark:text-amber-300 pt-0.5">
-                      Silakan klik tombol di bawah untuk membuka Portal Sertifikat dan mengunduh sertifikat Anda.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3.5 bg-blue-500/10 dark:bg-blue-950/30 border border-blue-500/30 rounded-2xl flex items-start space-x-2.5 text-left text-xs text-blue-900 dark:text-blue-200">
-                  <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div className="leading-relaxed">
-                    <strong className="font-bold">Informasi Sertifikat:</strong> Pastikan Anda telah melakukan absensi agar sertifikat dapat diproses.
-                  </div>
-                </div>
-              )}
-
-              {/* Summary Details Card */}
-              <div className="bg-[#efe7e2] dark:bg-[#34241d] rounded-2xl p-4 border border-[#decbc0] dark:border-[#4f382c] space-y-2.5 text-sm">
-                <div className="flex justify-between items-center pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
-                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
+            {/* Body matching Figma 254:1284 */}
+            <div className="p-[18px] flex flex-col space-y-3">
+              {/* Info Card */}
+              <div className="bg-[#f2f3f6] dark:bg-[#1c223c] border border-[#c0c2de] dark:border-[#323b63] rounded-[12px] p-3 flex flex-col space-y-2 text-xs">
+                {/* Status / Peran */}
+                <div className="flex items-center justify-between pb-1.5 border-b border-[#c0c2de]/60 dark:border-[#323b63]/60">
+                  <span className="font-bold text-[9px] uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
                     Status / Peran
                   </span>
-                  <span className="font-bold text-xs sm:text-sm text-[#2c1e18] dark:text-[#f5ece7] px-2.5 py-0.5 rounded-lg bg-[#decbc0]/50 dark:bg-[#4f382c]/50 border border-[#decbc0]/70 dark:border-[#4f382c]/70 shadow-xs">
+                  <span className="font-bold text-[10.5px] leading-tight text-[#18192c] dark:text-[#eef0fb] px-2 py-0.5 rounded-[6px] bg-[#c0c2de]/50 dark:bg-[#2b3356] border border-[#c0c2de]/70 dark:border-[#323b63] shadow-xs">
                     {successModalData?.roleLabel || getRoleLabel(successModalData?.role || role)}
                   </span>
                 </div>
 
-                <div className="flex justify-between items-start pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
-                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
+                {/* Nama Lengkap */}
+                <div className="flex items-start justify-between pb-1.5 border-b border-[#c0c2de]/60 dark:border-[#323b63]/60">
+                  <span className="font-bold text-[9px] uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
                     Nama Lengkap
                   </span>
-                  <span className="font-extrabold text-sm sm:text-base text-[#2c1e18] dark:text-[#f5ece7] text-right max-w-[65%]">
+                  <span className="font-extrabold text-[12px] leading-tight text-[#18192c] dark:text-[#f1f3fd] text-right max-w-[65%]">
                     {successModalData?.nama}
                   </span>
                 </div>
 
-                <div className="flex justify-between items-center pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
-                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
+                {/* NIP / NIM */}
+                <div className="flex items-center justify-between pb-1.5 border-b border-[#c0c2de]/60 dark:border-[#323b63]/60">
+                  <span className="font-bold text-[9px] uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
                     {(() => {
                       const modalRole = successModalData?.role || role;
                       const isModalDosen = modalRole === 'panitia_dosen' || modalRole === 'peserta_dosen' || modalRole === 'peserta_tendik';
                       return isModalDosen ? 'NIP' : 'NIM';
                     })()}
                   </span>
-                  <span className="font-mono font-bold text-sm sm:text-base text-[#2c1e18] dark:text-[#f5ece7]">
+                  <span className="font-mono font-bold text-[12px] leading-tight text-[#18192c] dark:text-[#f1f3fd]">
                     {successModalData?.nimNip}
                   </span>
                 </div>
 
-                <div className="flex justify-between items-center pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
-                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
+                {/* Status Validasi */}
+                <div className="flex items-center justify-between pb-1.5 border-b border-[#c0c2de]/60 dark:border-[#323b63]/60">
+                  <span className="font-bold text-[9px] uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
                     Status Validasi
                   </span>
-                  <span className={`text-xs font-bold flex items-center gap-1 ${successModalData?.isAlreadyRecorded ? 'text-blue-700 dark:text-blue-400' : 'text-emerald-700 dark:text-emerald-400'
-                    }`}>
-                    <ShieldCheck className="w-4 h-4" />
-                    Terverifikasi di Database
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#007a55] dark:text-[#34d399]" />
+                    <span className="font-bold text-[9px] text-[#007a55] dark:text-[#34d399]">
+                      Terverifikasi di Database
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-[#7e695d] dark:text-[#b09d92] uppercase tracking-wider">
+                {/* Waktu Catatan */}
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[9px] uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
                     Waktu Catatan
                   </span>
-                  <span className="text-xs sm:text-sm font-semibold text-[#5a4439] dark:text-[#c9b8ae] flex items-center gap-1 font-mono">
-                    <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
-                    {successModalData?.waktu}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-[#393b5a] dark:text-[#9aa0c2]" />
+                    <span className="font-mono font-semibold text-[10.5px] text-[#393b5a] dark:text-[#cbd5e1]">
+                      {successModalData?.waktu}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col gap-2.5 pt-1">
-                {successModalData?.isEligible ? (
-                  <>
-                    <a
-                      href="/sertifikat"
-                      className="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center space-x-2 text-center text-sm sm:text-base touch-manipulation cursor-pointer"
-                    >
-                      <Award className="w-5 h-5 flex-shrink-0" />
-                      <span>Klaim E-Sertifikat Sekarang</span>
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => setShowSuccessModal(false)}
-                      className="w-full py-3.5 px-4 rounded-xl font-bold bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23] border border-[#decbc0] dark:border-[#4f382c] transition-all active:scale-[0.98] text-sm sm:text-base touch-manipulation cursor-pointer"
-                    >
-                      Tutup Dialog
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowSuccessModal(false)}
-                    className="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 active:scale-[0.98] transition-all shadow-lg shadow-emerald-600/25 text-sm sm:text-base touch-manipulation cursor-pointer flex items-center justify-center space-x-2"
-                  >
-                    <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                    <span>Saya Mengerti, Akan Absen Siang Lagi</span>
-                  </button>
-                )}
-              </div>
+              {/* Action Button: Klaim E-Sertifikat Sekarang */}
+              {successModalData?.isEligible ? (
+                <a
+                  href="/sertifikat"
+                  className="bg-gradient-to-r from-[#4c95e6] to-[#0467ff] hover:from-[#3b82f6] hover:to-[#0252cc] text-white rounded-[10px] h-[46px] font-bold text-[12px] flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  <Award className="w-4 h-4 flex-shrink-0" />
+                  <span>Klaim E-Sertifikat Sekarang</span>
+                </a>
+              ) : null}
+
+              {/* Tutup Button */}
+              <button
+                type="button"
+                onClick={() => setShowSuccessModal(false)}
+                className="bg-[#e2e3ef] dark:bg-[#1c223c] border border-[#c0c2de] dark:border-[#323b63] text-[#6a6c85] dark:text-[#9aa0c2] hover:text-[#18192c] dark:hover:text-white rounded-[12px] h-[44px] font-bold text-[11px] flex items-center justify-center transition-all cursor-pointer"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Quick Check Attendance Status Modal (Ultra Lightweight) */}
+      {/* Quick Check Attendance Status Modal (Figma node 249:143) */}
       {showCheckModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl sm:rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="relative px-6 pt-6 pb-5 text-center bg-gradient-to-br from-[#ea580c] via-[#f97316] to-[#f59e0b] text-white flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCheckModal(false);
-                  setCheckResult(null);
-                }}
-                className="absolute top-3.5 right-3.5 text-white/80 hover:text-white p-2 rounded-full hover:bg-white/15 transition-all touch-manipulation active:scale-95 cursor-pointer"
-                aria-label="Tutup modal cek"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              <div className="mx-auto w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mb-2">
-                <Search className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-black text-white">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 animate-in fade-in duration-150">
+          <div className="bg-[#f8f8fc] dark:bg-[#14182b] rounded-[16px] shadow-2xl w-full max-w-[340px] sm:max-w-[350px] overflow-hidden border border-[#d2d4eb] dark:border-[#262d49] animate-in zoom-in-95 duration-150 flex flex-col">
+            {/* Header matching Figma */}
+            <div className="bg-gradient-to-r from-[#4c95e6] to-[#0467ff] dark:from-[#2563eb] dark:to-[#1d4ed8] px-4 pt-7 pb-6 flex flex-col items-center justify-center text-center text-white shrink-0">
+              <h3 className="font-extrabold text-[22px] leading-6 text-white text-center">
                 Cek Status Absensi
               </h3>
-              <p className="text-xs text-orange-100 mt-0.5">
+              <p className="font-normal text-[11px] leading-3 text-[#edeeff] text-center mt-1.5">
                 Periksa apakah kehadiran Anda sudah tercatat di sistem
               </p>
             </div>
 
-            {/* Form & Results */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
-              <form onSubmit={handleCheckStatus} className="space-y-3">
-                <div className="flex flex-col space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
-                    Masukkan NIM / NIP
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      required
-                      value={checkNimNip}
-                      onChange={(e) => setCheckNimNip(e.target.value.replace(/\D/g, ''))}
-                      placeholder="Contoh: 2108561001"
-                      className="flex-1 px-4 py-3 text-sm rounded-xl border border-[#decbc0] dark:border-[#4f382c] bg-[#efe7e2] dark:bg-[#34241d] text-[#2c1e18] dark:text-[#f5ece7] placeholder-[#9e8e84] dark:placeholder-[#8c776c] focus:ring-2 focus:ring-orange-500 font-mono"
-                      autoComplete="off"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isCheckingStatus || !checkNimNip.trim()}
-                      className="px-5 py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-orange-500/20 flex items-center justify-center whitespace-nowrap cursor-pointer"
-                    >
-                      {isCheckingStatus ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        'Cek'
-                      )}
-                    </button>
-                  </div>
+            {/* Form & Results matching Figma */}
+            <div className="p-[18px] flex flex-col space-y-3">
+              <form onSubmit={handleCheckStatus} className="flex flex-col space-y-1.5">
+                <label className="font-bold text-[9px] uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                  Masukkan NIM / NIP
+                </label>
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="text"
+                    required
+                    value={checkNimNip}
+                    onChange={(e) => setCheckNimNip(e.target.value.replace(/\D/g, ''))}
+                    placeholder="1234567891023456789"
+                    className="flex-1 h-[44px] px-3 text-sm rounded-[12px] border border-[#c0c2de] dark:border-[#323b63] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] font-mono focus:ring-2 focus:ring-[#0066ff]/30"
+                    autoComplete="off"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isCheckingStatus || !checkNimNip.trim()}
+                    className="h-[44px] px-4 rounded-[12px] bg-gradient-to-r from-[#4c95e6] to-[#0467ff] hover:from-[#3b82f6] hover:to-[#0252cc] text-white font-bold text-[11px] flex items-center justify-center whitespace-nowrap cursor-pointer active:scale-95 disabled:opacity-50"
+                  >
+                    {isCheckingStatus ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Cek'
+                    )}
+                  </button>
                 </div>
               </form>
 
-              {/* Result Area */}
+              {/* Result Area matching the clean info card */}
               {checkResult && (
-                <div className="animate-in fade-in zoom-in-95 duration-150">
+                <div className="animate-in fade-in duration-150">
                   {checkResult.found ? (
-                    <div className="bg-[#efe7e2] dark:bg-[#34241d] rounded-2xl p-4 border border-[#decbc0] dark:border-[#4f382c] space-y-3 text-sm">
-                      <div className="pb-2 border-b border-[#decbc0]/60 dark:border-[#4f382c]/60">
-                        <div className="text-[11px] font-bold uppercase tracking-wider text-[#7e695d] dark:text-[#b09d92]">
-                          Nama Terdaftar
-                        </div>
-                        <div className="font-extrabold text-base text-[#2c1e18] dark:text-[#f5ece7] mt-0.5">
-                          {checkResult.nama}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                          <span className="text-xs font-mono text-[#7e695d] dark:text-[#a8968c]">
-                            NIM/NIP: {checkResult.nim_nip}
+                    <div className="space-y-3">
+                      <div className="bg-[#f2f3f6] dark:bg-[#1c223c] border border-[#c0c2de] dark:border-[#323b63] rounded-[12px] p-3 flex flex-col space-y-2 text-xs">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-[#c0c2de]/60 dark:border-[#323b63]/60">
+                          <span className="font-bold text-[9px] uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                            Status / Peran
                           </span>
-                          {checkResult.role && (
-                            <span className="text-[11px] font-bold text-[#2c1e18] dark:text-[#f5ece7] px-2 py-0.5 rounded bg-[#decbc0]/50 dark:bg-[#4f382c]/50 border border-[#decbc0]/70 dark:border-[#4f382c]/70">
-                              {getRoleLabel(checkResult.role)}
+                          <span className="font-bold text-[10.5px] leading-tight text-[#18192c] dark:text-[#eef0fb] px-2 py-0.5 rounded-[6px] bg-[#c0c2de]/50 dark:bg-[#2b3356] border border-[#c0c2de]/70 dark:border-[#323b63]">
+                            {getRoleLabel(checkResult.role)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-start justify-between pb-1.5 border-b border-[#c0c2de]/60 dark:border-[#323b63]/60">
+                          <span className="font-bold text-[9px] uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                            Nama Lengkap
+                          </span>
+                          <span className="font-extrabold text-[12px] leading-tight text-[#18192c] dark:text-[#f1f3fd] text-right max-w-[65%]">
+                            {checkResult.nama}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between pb-1.5 border-b border-[#c0c2de]/60 dark:border-[#323b63]/60">
+                          <span className="font-bold text-[9px] uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                            NIM/NIP
+                          </span>
+                          <span className="font-mono font-bold text-[12px] leading-tight text-[#18192c] dark:text-[#f1f3fd]">
+                            {checkResult.nim_nip}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between pb-1.5 border-b border-[#c0c2de]/60 dark:border-[#323b63]/60">
+                          <span className="font-bold text-[9px] uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                            Status Validasi
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#007a55] dark:text-[#34d399]" />
+                            <span className="font-bold text-[9px] text-[#007a55] dark:text-[#34d399]">
+                              {checkResult.hasPagi || checkResult.hasSiang ? 'Terverifikasi di Database' : 'Belum Absen'}
                             </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Attendance Status */}
-                      {(() => {
-                        const attended = !!(checkResult.hasPagi || checkResult.hasSiang);
-                        const waktu = checkResult.pagiWaktu || checkResult.siangWaktu;
-                        return (
-                          <div className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center ${attended
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
-                            : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
-                            }`}>
-                            <span className="text-xs font-bold">Status Kehadiran</span>
-                            <span className="text-[11px] font-extrabold mt-1">{attended ? '✓ Sudah Absen' : '⏳ Belum Absen'}</span>
-                            {attended && waktu && (
-                              <span className="text-[10px] font-mono opacity-80 mt-0.5">{waktu}</span>
-                            )}
                           </div>
-                        );
-                      })()}
-
-                      {/* Certificate Status */}
-                      <div className={`p-3 rounded-xl border text-xs leading-relaxed flex items-start space-x-2 ${checkResult.eligibleForCertificate
-                        ? 'bg-amber-500/15 border-amber-500/40 text-amber-950 dark:text-amber-200'
-                        : 'bg-blue-500/10 border-blue-500/30 text-blue-900 dark:text-blue-200'
-                        }`}>
-                        <Award className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                        <div>
-                          {checkResult.eligibleForCertificate ? (
-                            <>
-                              <strong className="font-bold">Berhak E-Sertifikat! 🎉</strong> Kehadiran Anda telah tercatat. Sertifikat dapat diunduh di Portal Sertifikat.
-                            </>
-                          ) : (
-                            <>
-                              <strong className="font-bold">Belum Ada Presensi:</strong> Harap lakukan absensi terlebih dahulu untuk mendapatkan sertifikat.
-                            </>
-                          )}
                         </div>
+
+                        {(checkResult.pagiWaktu || checkResult.siangWaktu) && (
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-[9px] uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                              Waktu Catatan
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-[#393b5a] dark:text-[#9aa0c2]" />
+                              <span className="font-mono font-semibold text-[10.5px] text-[#393b5a] dark:text-[#cbd5e1]">
+                                {checkResult.pagiWaktu || checkResult.siangWaktu}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {checkResult.eligibleForCertificate && (
                         <a
                           href="/sertifikat"
-                          className="w-full py-2.5 px-3 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-orange-600 to-amber-600 flex items-center justify-center gap-1.5 shadow-sm mt-1 cursor-pointer"
+                          className="bg-gradient-to-r from-[#4c95e6] to-[#0467ff] hover:from-[#3b82f6] hover:to-[#0252cc] text-white rounded-[10px] h-[46px] font-bold text-[12px] flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98] transition-all cursor-pointer"
                         >
-                          <Award className="w-4 h-4" />
-                          <span>Buka Portal Sertifikat</span>
+                          <Award className="w-4 h-4 flex-shrink-0" />
+                          <span>Klaim E-Sertifikat Sekarang</span>
                         </a>
                       )}
                     </div>
                   ) : (
-                    <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-900 dark:text-rose-200 flex items-start space-x-2.5">
-                      <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-[12px] text-xs text-rose-900 dark:text-rose-200 flex items-center space-x-2">
+                      <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0" />
                       <span>{checkResult.message || 'Belum ada data absensi untuk NIM/NIP tersebut.'}</span>
                     </div>
                   )}
                 </div>
               )}
 
+              {/* Tutup Button */}
               <button
                 type="button"
                 onClick={() => {
                   setShowCheckModal(false);
                   setCheckResult(null);
                 }}
-                className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-[#efe7e2] dark:bg-[#34241d] text-[#5a4439] dark:text-[#c9b8ae] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23] transition-all cursor-pointer"
+                className="bg-[#e2e3ef] dark:bg-[#1c223c] border border-[#c0c2de] dark:border-[#323b63] text-[#6a6c85] dark:text-[#9aa0c2] hover:text-[#18192c] dark:hover:text-white rounded-[12px] h-[44px] font-bold text-[11px] flex items-center justify-center transition-all cursor-pointer"
               >
                 Tutup
               </button>
@@ -1333,8 +1254,3 @@ export default function AttendanceForm() {
     </div>
   );
 }
-
-
-
-
-

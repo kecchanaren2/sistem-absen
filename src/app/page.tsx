@@ -2,20 +2,21 @@ import AttendanceForm from './components/AttendanceForm';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#f5ebe6] dark:bg-[#19110e] font-sans text-[#2c1e18] dark:text-[#f6ede8] flex flex-col justify-between selection:bg-orange-500 selection:text-white transition-colors duration-300 relative overflow-hidden">
-      {/* Background Ambient Warm Glows */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 transform-gpu backface-hidden">
-        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-orange-500/15 dark:bg-orange-600/10 rounded-full blur-[140px] transform-gpu" />
-        <div className="absolute top-1/3 -left-48 w-[400px] h-[400px] bg-amber-500/10 dark:bg-amber-700/8 rounded-full blur-[120px] transform-gpu" />
-        <div className="absolute -bottom-32 right-1/4 w-[500px] h-[450px] bg-red-500/10 dark:bg-red-800/8 rounded-full blur-[130px] transform-gpu" />
-      </div>
+    <div className="min-h-screen bg-[#e6e7f5] dark:bg-[#0d1122] font-sans text-[#18192c] dark:text-[#f1f3fd] flex flex-col justify-between selection:bg-[#0066ff] selection:text-white transition-colors duration-200 relative overflow-hidden">
+      {/* Subtle lightweight gradient background without GPU-heavy CSS blurs */}
+      <div 
+        className="fixed inset-0 pointer-events-none z-0 opacity-40 dark:opacity-20"
+        style={{
+          backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(76, 149, 230, 0.25) 0%, transparent 70%)'
+        }}
+      />
 
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center p-3 sm:p-6 md:p-8 lg:p-12 w-full max-w-4xl mx-auto">
         <AttendanceForm />
       </main>
 
-      <footer className="relative z-10 py-5 text-center text-xs font-medium text-[#8f7e75] dark:text-[#9e8b81] tracking-wide">
-        Ac 2026 Dies Natalis 64. All rights reserved.
+      <footer className="relative z-10 py-5 text-center text-xs font-medium text-[#75778f] dark:text-[#7f88a3] tracking-wide">
+        Ac 2026 Workshop Penyusunan Standar Pelayanan. All rights reserved.
       </footer>
     </div>
   );

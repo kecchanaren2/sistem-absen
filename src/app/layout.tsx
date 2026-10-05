@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PORTAL ABSENSI - Dies Natalis 64 Universitas Udayana",
-  description: "Platform absensi digital resmi Dies Natalis 64 Universitas Udayana",
+  title: "PORTAL ABSENSI - Workshop Penyusunan Standar Pelayanan",
+  description: "Platform absensi digital resmi Workshop Penyusunan Standar Pelayanan Universitas Udayana",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -44,7 +44,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth dark`}
     >
       <head>
-        <meta name="theme-color" content="#ea580c" />
+        <meta name="theme-color" content="#0467ff" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <script

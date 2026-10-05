@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { QRGenerator } from '@/lib/qr-generator';
-import { Download, QrCode, X } from 'lucide-react';
+import { Download, QrCode } from 'lucide-react';
 
 interface QRCodeWidgetProps {
   text?: string;
@@ -17,8 +17,8 @@ interface QRCodeWidgetProps {
 export default function QRCodeWidget({
   text,
   logoUrl = '/logo-dies-hitam.svg',
-  colorDark = '#114084',
-  downloadFilename = 'qr-absensi-dies64.png',
+  colorDark = '#0467ff',
+  downloadFilename = 'qr-absensi-workshop.png',
 }: QRCodeWidgetProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const qrRef     = useRef<QRGenerator | null>(null);
@@ -92,55 +92,63 @@ export default function QRCodeWidget({
         disabled={!ready || error}
         aria-label="Tampilkan QR Code Absensi"
         title="Tampilkan QR Absensi"
-        className="!min-h-0 !min-w-0 p-[5px] rounded-full backdrop-blur-[12px] bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-200 active:scale-90 shadow-sm flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+        className="!min-h-0 !min-w-0 p-[5px] rounded-full bg-white/35 hover:bg-white/45 border border-white/40 text-white transition-all duration-150 active:scale-90 shadow-sm flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         <QrCode className="w-4 h-4 text-white" />
       </button>
 
-      {/* Modal Popup QR */}
+      {/* Modal Popup QR — Lightweight Figma style */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#fcfaf8] dark:bg-[#241713] rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-[#ebdcd2] dark:border-[#3e2a21] animate-in zoom-in-95 duration-200 flex flex-col relative">
-            
-            {/* Close Button on Top Right */}
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 p-2 text-[#7e695d] dark:text-[#a39086] hover:bg-[#efe7e2] dark:hover:bg-[#34241d] rounded-full transition-colors active:scale-95"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="p-6 flex flex-col items-center text-center">
-              <h3 className="text-xl font-extrabold text-[#2c1e18] dark:text-[#f5ece7] mb-2">QR Code Absensi</h3>
-              <p className="text-sm text-[#7e695d] dark:text-[#b09d92] font-medium mb-6 leading-relaxed">
-                Silakan scan QR code di bawah ini menggunakan perangkat lain untuk melakukan absensi.
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-in fade-in duration-150">
+          <div className="bg-[#f8f8fc] dark:bg-[#14182b] rounded-[16px] shadow-2xl w-full max-w-[340px] sm:max-w-[350px] overflow-hidden border border-[#d2d4eb] dark:border-[#262d49] animate-in zoom-in-95 duration-150 flex flex-col">
+            {/* Header matching Figma */}
+            <div className="bg-gradient-to-r from-[#4c95e6] to-[#0467ff] dark:from-[#2563eb] dark:to-[#1d4ed8] px-4 pt-7 pb-6 flex flex-col items-center justify-center text-center text-white shrink-0">
+              <h3 className="font-extrabold text-[22px] leading-6 text-white text-center">
+                QR Code Absensi
+              </h3>
+              <p className="font-normal text-[11px] leading-3 text-[#edeeff] text-center mt-1.5">
+                Scan kode ini untuk membuka presensi di perangkat lain
               </p>
+            </div>
 
-              {/* QR Image Container */}
-              <div className="p-3 bg-white rounded-2xl shadow-sm border border-[#ebdcd2] dark:border-[#3e2a21] mb-6 inline-flex">
-                {qrDataUrl ? (
-                  <img src={qrDataUrl} alt="QR Code" className="w-[200px] h-[200px] sm:w-[240px] sm:h-[240px] object-contain" />
-                ) : (
-                  <div className="w-[200px] h-[200px] sm:w-[240px] sm:h-[240px] bg-gray-100 flex items-center justify-center rounded-xl">
-                    <QrCode className="w-10 h-10 text-gray-400 animate-pulse" />
-                  </div>
-                )}
+            {/* Body */}
+            <div className="p-[18px] flex flex-col space-y-3">
+              {/* QR Image Card */}
+              <div className="bg-[#f2f3f6] dark:bg-[#1c223c] border border-[#c0c2de] dark:border-[#323b63] rounded-[12px] p-3 flex flex-col items-center justify-center">
+                <div className="p-2.5 bg-white rounded-[10px] border border-[#d2d4eb] dark:border-[#323b63] inline-flex items-center justify-center">
+                  {qrDataUrl ? (
+                    <img
+                      src={qrDataUrl}
+                      alt="QR Code Presensi"
+                      className="w-[180px] h-[180px] object-contain"
+                      width={180}
+                      height={180}
+                    />
+                  ) : (
+                    <div className="w-[180px] h-[180px] bg-gray-100 flex items-center justify-center rounded-lg">
+                      <QrCode className="w-10 h-10 text-gray-400 animate-pulse" />
+                    </div>
+                  )}
+                </div>
+                <span className="font-mono text-[10px] text-[#5d5f7e] dark:text-[#9aa0c2] mt-2 font-medium">
+                  {downloadFilename}
+                </span>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <div className="flex flex-col gap-2 pt-1">
                 <button
                   type="button"
                   onClick={handleDownload}
-                  className="flex-1 py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#f59e0b] hover:from-[#c2410c] hover:to-[#d97706] active:scale-[0.98] transition-all shadow-md shadow-orange-500/25 flex items-center justify-center gap-2"
+                  className="bg-gradient-to-r from-[#4c95e6] to-[#0467ff] hover:from-[#3b82f6] hover:to-[#0252cc] text-white rounded-[10px] h-[46px] font-bold text-[12px] flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
-                  Unduh Gambar
+                  <span>Unduh Gambar QR</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-3 px-4 rounded-xl font-bold text-[#5a4439] dark:text-[#c9b8ae] bg-[#efe7e2] dark:bg-[#34241d] hover:bg-[#e8ded8] dark:hover:bg-[#3d2c23] active:scale-[0.98] transition-all flex items-center justify-center"
+                  className="bg-[#e2e3ef] dark:bg-[#1c223c] border border-[#c0c2de] dark:border-[#323b63] text-[#6a6c85] dark:text-[#9aa0c2] hover:text-[#18192c] dark:hover:text-white rounded-[12px] h-[44px] font-bold text-[11px] flex items-center justify-center transition-all cursor-pointer"
                 >
                   Tutup
                 </button>
