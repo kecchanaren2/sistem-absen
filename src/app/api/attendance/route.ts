@@ -179,7 +179,7 @@ export async function POST(req: Request) {
         const { data: existingRecord } = await supabaseAdmin
           .from('attendance')
           .select('peran, name, waktu_date')
-          .eq('NIM/NIP', cleanNimNip)
+          .eq('"NIM/NIP"', cleanNimNip)
           .limit(1);
 
         const existingRole = (existingRecord && existingRecord[0]?.peran) || role;

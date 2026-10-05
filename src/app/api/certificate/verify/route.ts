@@ -73,8 +73,8 @@ export async function POST(req: Request) {
     // Query attendance records for this NIM/NIP
     let { data: attendanceRecords, error } = await supabaseAdmin
       .from('attendance')
-      .select('name, peran, "NIM/NIP", email, waktu_date')
-      .eq('NIM/NIP', cleanNimNip);
+      .select('name, peran, email, waktu_date')
+      .eq('"NIM/NIP"', cleanNimNip);
 
     // Jika tidak ditemukan di attendance, cari di rekap_gabungan
     if (!attendanceRecords || attendanceRecords.length === 0) {
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
 
     if (error && (!attendanceRecords || attendanceRecords.length === 0)) {
       console.error('Supabase error:', error);
-      return NextResponse.json({ error: 'Terjadi kesalahan saat mengecek data absensi.' }, { status: 500 });
+      return NextResponse.json({ error: `Terjadi kesalahan saat mengecek data absensi. Details: ${error?.message || JSON.stringify(error)}` }, { status: 500 });
     }
 
     if (!attendanceRecords || attendanceRecords.length === 0) {
@@ -153,8 +153,8 @@ export async function POST(req: Request) {
         error: 'Data absensi tidak ditemukan. Anda belum melakukan absensi di sesi manapun.'
       }, { status: 400 });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('API Error:', error);
-    return NextResponse.json({ error: 'Terjadi kesalahan pada server.' }, { status: 500 });
+    return NextResponse.json({ error: `Terjadi kesalahan pada server. Details: ${error?.message || error}` }, { status: 500 });
   }
 }

@@ -74,8 +74,8 @@ export async function POST(req: Request) {
     if (cleanNimNip) {
       const { data: nimRecords, error: nimError } = await supabaseAdmin
         .from('attendance')
-        .select('name, peran, waktu_date, email, "NIM/NIP"')
-        .eq('NIM/NIP', cleanNimNip);
+        .select('name, peran, waktu_date, email')
+        .eq('"NIM/NIP"', cleanNimNip);
 
       if (nimError) {
         console.error('Check status error (NIM):', nimError);
@@ -91,17 +91,16 @@ export async function POST(req: Request) {
     if (emailToSearch && records.length === 0) {
       const { data: emailRecords, error: emailError } = await supabaseAdmin
         .from('attendance')
-        .select('name, peran, waktu_date, email, "NIM/NIP"')
+        .select('name, peran, waktu_date, email')
         .ilike('email', emailToSearch);
 
       if (emailError) {
         console.error('Check status error (Email fallback):', emailError);
       } else if (emailRecords && emailRecords.length > 0) {
-        // Gabungkan catatan unik
-        const existingIds = new Set(records.map((r) => `${r['NIM/NIP']}`));
+        // Gabungkan catatan unik berdasarkan email jika ada
+        const existingEmails = new Set(records.map((r) => r.email));
         emailRecords.forEach((er) => {
-          const key = `${er['NIM/NIP']}`;
-          if (!existingIds.has(key)) {
+          if (er.email && !existingEmails.has(er.email)) {
             records.push(er);
           }
         });
@@ -124,7 +123,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       found: true,
-      nim_nip: cleanNimNip || firstRecord['NIM/NIP'],
+      nim_nip: cleanNimNip,
       nama: firstRecord.name || '',
       role: firstRecord.peran || '',
       waktu: waktuAbsen,
