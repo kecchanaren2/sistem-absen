@@ -102,7 +102,7 @@ export async function POST(req: Request) {
 
     if (isEligible) {
       // Panitia names must always come from the whitelist, never from form input.
-      const firstRecord = attendanceRecords[0];
+      const firstRecord = attendanceRecords[0] as any;
       let namaPeserta = firstRecord.name || firstRecord.nama_peserta;
 
       // Normalize role name to handle CSV inconsistencies (e.g. "Peserta Dosen" -> "peserta_dosen")
