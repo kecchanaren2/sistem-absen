@@ -71,7 +71,7 @@ function saveLocalAttendanceRecord(
 
   // Layer 1: LocalStorage
   try {
-    localStorage.setItem('absen_history_sesi_' + sesi, recordStr);
+    localStorage.setItem('workshop_history_sesi_' + sesi, recordStr);
   } catch (err) {
     console.warn('LocalStorage save error:', err);
   }
@@ -80,7 +80,7 @@ function saveLocalAttendanceRecord(
   try {
     const isSecure = window.location.protocol === 'https:' ? '; Secure' : '';
     const encoded = encodeURIComponent(recordStr);
-    document.cookie = `absen_history_sesi_${sesi}=${encoded}; path=/; max-age=86400; SameSite=Lax${isSecure}`;
+    document.cookie = `workshop_history_sesi_${sesi}=${encoded}; path=/; max-age=86400; SameSite=Lax${isSecure}`;
   } catch (err) {
     console.warn('Cookie save error:', err);
   }
@@ -93,7 +93,7 @@ function getLocalAttendanceRecord(
 
   // Layer 1: LocalStorage (Fastest)
   try {
-    const saved = localStorage.getItem('absen_history_sesi_' + sesi);
+    const saved = localStorage.getItem('workshop_history_sesi_' + sesi);
     if (saved) {
       return JSON.parse(saved);
     }
@@ -101,12 +101,12 @@ function getLocalAttendanceRecord(
 
   // Layer 2: Cookie fallback (In case LocalStorage was purged by iOS Safari private mode or browser cleaning)
   try {
-    const match = document.cookie.match(new RegExp(`(?:^|; )absen_history_sesi_${sesi}=([^;]+)`));
+    const match = document.cookie.match(new RegExp(`(?:^|; )workshop_history_sesi_${sesi}=([^;]+)`));
     if (match && match[1]) {
       const parsed = JSON.parse(decodeURIComponent(match[1]));
       // Self-heal: sync back to LocalStorage
       try {
-        localStorage.setItem('absen_history_sesi_' + sesi, JSON.stringify(parsed));
+        localStorage.setItem('workshop_history_sesi_' + sesi, JSON.stringify(parsed));
       } catch { }
       return parsed;
     }
@@ -273,7 +273,7 @@ export default function AttendanceForm() {
           setNamaPeserta(result.nama);
         }
         try {
-          localStorage.setItem('absen_last_nim', clean);
+          localStorage.setItem('workshop_last_nim', clean);
         } catch { }
         const currentRec = getLocalAttendanceRecord(hariAbsen);
         setLocalHistory(currentRec);
@@ -297,7 +297,7 @@ export default function AttendanceForm() {
     // Auto-sync for attendees who attended Sesi 1 earlier this morning
     if (!pagiExists && typeof window !== 'undefined') {
       try {
-        const lastNim = localStorage.getItem('absen_last_nim');
+        const lastNim = localStorage.getItem('workshop_last_nim');
         if (lastNim && lastNim.length >= 8) {
           syncStatusFromDatabase(lastNim);
         }
@@ -373,7 +373,7 @@ export default function AttendanceForm() {
           setRole(result.role as any);
         }
         try {
-          localStorage.setItem('absen_last_nim', clean);
+          localStorage.setItem('workshop_last_nim', clean);
         } catch { }
         const currentRec = getLocalAttendanceRecord(hariAbsen);
         setLocalHistory(currentRec);
@@ -492,7 +492,7 @@ export default function AttendanceForm() {
             });
           }
           try {
-            localStorage.setItem('absen_last_nim', cleanNimNip);
+            localStorage.setItem('workshop_last_nim', cleanNimNip);
           } catch { }
           setLocalHistory(hist);
           setHasLocalPagi(!!getLocalAttendanceRecord(1));
@@ -559,7 +559,7 @@ export default function AttendanceForm() {
         });
       }
       try {
-        localStorage.setItem('absen_last_nim', cleanNimNip);
+        localStorage.setItem('workshop_last_nim', cleanNimNip);
       } catch { }
       setLocalHistory(hist);
       setHasLocalPagi(!!getLocalAttendanceRecord(1));
