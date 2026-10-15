@@ -134,6 +134,23 @@ export async function POST(req: Request) {
       verifiedPanitiaName = whitelistEntry.Nama;
     }
 
+    // Check Master Attendance Gate
+    try {
+      const { data: eventSettings } = await supabaseAdmin
+        .from('event_settings')
+        .select('is_attendance_open, closed_message')
+        .eq('id', 'default')
+        .maybeSingle();
+
+      if (eventSettings && eventSettings.is_attendance_open === false) {
+        return NextResponse.json({
+          error: eventSettings.closed_message || 'Absensi telah ditutup oleh Administrator.'
+        }, { status: 403 });
+      }
+    } catch {
+      // Resilient fallback jika tabel event_settings belum dibuat
+    }
+
     // Check Schedule Validation
     const scheduleStatus = getSessionStatus(1);
     if (!scheduleStatus.isOpen) {

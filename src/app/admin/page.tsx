@@ -17,14 +17,23 @@ import {
   Eye,
   EyeOff,
   Lock,
+  Unlock,
   Mail,
   ShieldCheck,
   Palette,
   ArrowLeft,
   Sliders,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
+import {
+  getLocalEventConfig,
+  fetchEventConfig,
+  toggleAttendanceStatus,
+  EventFormConfig,
+} from "@/lib/event-config";
 
 type Stats = {
   total: number;
@@ -33,7 +42,15 @@ type Stats = {
 };
 
 // ─── Dashboard Overview Tab ──────────────────────────────────────────────────
-function DashboardOverview() {
+function DashboardOverview({
+  eventConfig,
+  onToggleAttendance,
+  isToggling,
+}: {
+  eventConfig: EventFormConfig;
+  onToggleAttendance: () => void;
+  isToggling: boolean;
+}) {
   const [stats, setStats] = useState<Stats>({ total: 0, peserta: 0, panitia: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -79,6 +96,8 @@ function DashboardOverview() {
     },
   ];
 
+  const isOpen = eventConfig.is_attendance_open !== false;
+
   return (
     <div className="max-w-[1200px] mx-auto space-y-8 animate-in fade-in duration-200">
       {/* Page Header */}
@@ -86,6 +105,67 @@ function DashboardOverview() {
         <p className="text-xs font-bold text-indigo-600 tracking-widest uppercase mb-1">Ringkasan Sistem</p>
         <h2 className="text-3xl font-bold tracking-tight text-slate-900 mb-1">Dashboard Admin</h2>
         <p className="text-sm text-slate-500">Statistik dan kontrol data absensi workshop secara langsung.</p>
+      </div>
+
+      {/* Attendance Gate Status Card */}
+      <div
+        className={`p-6 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all shadow-sm ${
+          isOpen
+            ? "bg-emerald-50/70 border-emerald-200 text-emerald-950"
+            : "bg-rose-50/70 border-rose-200 text-rose-950"
+        }`}
+      >
+        <div className="flex items-center gap-4">
+          <div
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
+              isOpen ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+            }`}
+          >
+            {isOpen ? <Unlock className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-base tracking-tight">
+                Status Gerbang Absensi: {isOpen ? "DIBUKA" : "DITUTUP"}
+              </span>
+              <span
+                className={`inline-block w-2.5 h-2.5 rounded-full ${
+                  isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+                }`}
+              />
+            </div>
+            <p className="text-xs text-slate-600 mt-1 max-w-xl">
+              {isOpen
+                ? "Gerbang aktif. Peserta dapat mengisi absensi secara langsung melalui portal utama."
+                : `Gerbang dikunci. Peserta melihat pesan penutupan: "${
+                    eventConfig.closed_message || "Absensi telah ditutup oleh Administrator."
+                  }"`}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onToggleAttendance}
+          disabled={isToggling}
+          className={`shrink-0 px-4 py-2.5 rounded-xl text-xs font-bold transition-all border shadow-xs cursor-pointer flex items-center gap-2 ${
+            isOpen
+              ? "bg-rose-600 hover:bg-rose-700 text-white border-rose-600"
+              : "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
+          }`}
+        >
+          {isOpen ? (
+            <>
+              <Lock className="w-4 h-4" />
+              <span>Tutup Absensi Sekarang</span>
+            </>
+          ) : (
+            <>
+              <Unlock className="w-4 h-4" />
+              <span>Buka Kembali Absensi</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Metric Cards */}
@@ -328,6 +408,9 @@ export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("attendance");
+  const [eventConfig, setEventConfig] = useState<EventFormConfig>(() => getLocalEventConfig());
+  const [isTogglingAttendance, setIsTogglingAttendance] = useState(false);
+  const [toggleToast, setToggleToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -338,8 +421,41 @@ export default function AdminPage() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
-    return () => listener.subscription.unsubscribe();
+
+    fetchEventConfig().then((cfg) => setEventConfig(cfg));
+    const handleUpdate = () => {
+      setEventConfig(getLocalEventConfig());
+    };
+    window.addEventListener("event_config_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+
+    return () => {
+      listener.subscription.unsubscribe();
+      window.removeEventListener("event_config_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
   }, []);
+
+  const handleToggleAttendance = async () => {
+    if (isTogglingAttendance) return;
+    setIsTogglingAttendance(true);
+    const currentOpen = eventConfig.is_attendance_open !== false;
+    const nextOpen = !currentOpen;
+    try {
+      const res = await toggleAttendanceStatus(nextOpen);
+      setEventConfig(res.config);
+      setToggleToast({
+        message: nextOpen ? "Gerbang absensi berhasil DIBUKA!" : "Gerbang absensi berhasil DITUTUP!",
+        type: "success",
+      });
+      setTimeout(() => setToggleToast(null), 3500);
+    } catch {
+      setToggleToast({ message: "Gagal mengubah status absensi.", type: "error" });
+      setTimeout(() => setToggleToast(null), 3500);
+    } finally {
+      setIsTogglingAttendance(false);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -472,21 +588,72 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-3 text-xs font-medium text-slate-400">
-            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-2.5 py-1.5 rounded-lg border border-emerald-100">
+            {/* Quick Master Switch Buka/Tutup Absen */}
+            <button
+              type="button"
+              onClick={handleToggleAttendance}
+              disabled={isTogglingAttendance}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-xs cursor-pointer select-none ${
+                eventConfig.is_attendance_open !== false
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+                  : "bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100 animate-pulse"
+              }`}
+              title={
+                eventConfig.is_attendance_open !== false
+                  ? "Klik untuk menutup gerbang absensi"
+                  : "Klik untuk membuka kembali gerbang absensi"
+              }
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  eventConfig.is_attendance_open !== false ? "bg-emerald-500" : "bg-rose-500"
+                }`}
+              />
+              <span>
+                {eventConfig.is_attendance_open !== false ? "ABSENSI BUKA" : "ABSENSI TUTUP"}
+              </span>
+              {eventConfig.is_attendance_open !== false ? (
+                <Lock className="w-3.5 h-3.5 opacity-60 hover:opacity-100" />
+              ) : (
+                <Unlock className="w-3.5 h-3.5 opacity-60 hover:opacity-100" />
+              )}
+            </button>
+
+            <div className="hidden sm:flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-2.5 py-1.5 rounded-lg border border-emerald-100">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="font-medium">Supabase Connected</span>
             </div>
-            <Clock className="w-4 h-4 text-slate-300" />
-            <span>Live sync</span>
             <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
               {userInitials}
             </div>
           </div>
         </header>
 
+        {/* Floating Toast Notification */}
+        {toggleToast && (
+          <div className="fixed top-20 right-8 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div
+              className={`px-4 py-2.5 rounded-xl shadow-lg border text-xs font-bold flex items-center gap-2.5 ${
+                toggleToast.type === "success"
+                  ? "bg-slate-900 text-white border-slate-800"
+                  : "bg-rose-600 text-white border-rose-700"
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>{toggleToast.message}</span>
+            </div>
+          </div>
+        )}
+
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-8">
-          {activeTab === "dashboard" && <DashboardOverview />}
+          {activeTab === "dashboard" && (
+            <DashboardOverview
+              eventConfig={eventConfig}
+              onToggleAttendance={handleToggleAttendance}
+              isToggling={isTogglingAttendance}
+            />
+          )}
           {activeTab === "attendance" && (
             <div className="max-w-[1200px] mx-auto space-y-6">
               <div>

@@ -16,6 +16,9 @@ import {
   FileText,
   Loader2,
   Info,
+  Lock,
+  Unlock,
+  AlertTriangle,
 } from "lucide-react";
 import {
   EventFormConfig,
@@ -218,6 +221,74 @@ export function EventFormManager() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Kolom Kiri: Info Acara & Roles (5 Kolom) */}
         <div className="lg:col-span-5 space-y-6">
+          {/* Card 0: Status Gerbang Absensi */}
+          <div
+            className={`p-5 rounded-2xl border shadow-xs space-y-4 transition-all ${
+              config.is_attendance_open !== false
+                ? "bg-emerald-50/60 border-emerald-200"
+                : "bg-rose-50/60 border-rose-200"
+            }`}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-black/5">
+              <div className="flex items-center gap-2">
+                {config.is_attendance_open !== false ? (
+                  <Unlock className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  <Lock className="w-4 h-4 text-rose-600" />
+                )}
+                <h3 className="text-sm font-bold text-slate-800">Status Gerbang Absensi</h3>
+              </div>
+              <span
+                className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
+                  config.is_attendance_open !== false
+                    ? "bg-emerald-600 text-white"
+                    : "bg-rose-600 text-white animate-pulse"
+                }`}
+              >
+                {config.is_attendance_open !== false ? "DIBUKA" : "DITUTUP"}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {config.is_attendance_open !== false
+                  ? "Peserta dapat mengisi dan mengirim absensi secara normal."
+                  : "Peserta umum tidak bisa absen. Tombol absen di halaman depan dikunci."}
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  setConfig({
+                    ...config,
+                    is_attendance_open: !(config.is_attendance_open !== false),
+                  })
+                }
+                className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-xs cursor-pointer ${
+                  config.is_attendance_open !== false
+                    ? "bg-rose-600 hover:bg-rose-700 text-white border-rose-600"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
+                }`}
+              >
+                {config.is_attendance_open !== false ? "Tutup Absen" : "Buka Absen"}
+              </button>
+            </div>
+
+            {config.is_attendance_open === false && (
+              <div className="pt-2 border-t border-rose-200/60">
+                <label className="block text-xs font-semibold text-rose-950 mb-1">
+                  Pesan Penutupan yang Tampil ke Pengunjung:
+                </label>
+                <input
+                  type="text"
+                  value={config.closed_message || ""}
+                  onChange={(e) => setConfig({ ...config, closed_message: e.target.value })}
+                  placeholder="Absensi telah ditutup oleh Administrator."
+                  className="w-full px-3 py-2 bg-white border border-rose-300 rounded-lg text-xs text-rose-900 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                />
+              </div>
+            )}
+          </div>
+
           {/* Card 1: Identitas Acara */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">

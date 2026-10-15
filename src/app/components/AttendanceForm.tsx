@@ -225,10 +225,12 @@ export default function AttendanceForm() {
       setEventConfig(cfg);
     };
     window.addEventListener('event_config_updated', onUpdate);
+    window.addEventListener('storage', onUpdate);
 
     return () => {
       clearTimeout(timer);
       window.removeEventListener('event_config_updated', onUpdate);
+      window.removeEventListener('storage', onUpdate);
     };
   }, []);
 
@@ -427,6 +429,8 @@ export default function AttendanceForm() {
   };
 
   const selectedSessionStatus = hariAbsen === 1 ? status1 : status2;
+  const isGateOpen = eventConfig.is_attendance_open !== false;
+  const isFormSubmitAllowed = isMounted && !isLoading && isGateOpen && selectedSessionStatus.isOpen;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -498,6 +502,15 @@ export default function AttendanceForm() {
 
     if (whatsappField?.enabled && whatsappField.required && !whatsapp.trim()) {
       setMessage({ text: `${whatsappField.label || 'Nomor WhatsApp'} tidak boleh kosong.`, type: 'error' });
+      return;
+    }
+
+    const isGateOpen = eventConfig.is_attendance_open !== false;
+    if (!isGateOpen) {
+      setMessage({
+        text: eventConfig.closed_message || 'Absensi telah ditutup oleh Administrator.',
+        type: 'error',
+      });
       return;
     }
 
@@ -1156,8 +1169,21 @@ export default function AttendanceForm() {
                 );
               })()}
 
-              {/* Sesi Closed Banner */}
-              {!selectedSessionStatus.isOpen && (
+              {/* Gerbang Ditutup Banner (Manual Admin Master Switch) */}
+              {!isGateOpen && (
+                <div className="p-4 bg-rose-500/10 dark:bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-900 dark:text-rose-200 text-xs sm:text-sm flex items-start space-x-3 shadow-xs">
+                  <Lock className="w-5 h-5 flex-shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Gerbang Absensi Ditutup</p>
+                    <p className="text-xs text-rose-800 dark:text-rose-300 mt-0.5 leading-relaxed">
+                      {eventConfig.closed_message || 'Absensi telah ditutup oleh Administrator.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Sesi Closed Banner (Schedule Jam Otomatis) */}
+              {isGateOpen && !selectedSessionStatus.isOpen && (
                 <div className="p-3 bg-[rgba(0,17,254,0.08)] dark:bg-blue-950/40 border border-[rgba(0,17,254,0.25)] dark:border-blue-800/40 rounded-xl text-[#060e7b] dark:text-blue-200 text-xs flex items-center space-x-2">
                   <Lock className="w-4 h-4 flex-shrink-0 text-[#0467ff] dark:text-blue-400" />
                   <span>
@@ -1169,17 +1195,20 @@ export default function AttendanceForm() {
               {/* Submit / Action Button */}
               <button
                 type="submit"
-                disabled={!isMounted || isLoading || !selectedSessionStatus.isOpen}
-                className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm sm:text-base transition-all flex justify-center items-center mt-2 touch-manipulation min-h-[46px] ${!isMounted || !selectedSessionStatus.isOpen
-                  ? 'bg-[#dadbe6] dark:bg-[#202538] border border-[#c1c2d6] dark:border-[#313a57] text-[#6a6c85] dark:text-[#717b99] cursor-not-allowed shadow-none'
-                  : 'bg-[#0066ff] hover:bg-[#0052cc] active:scale-[0.98] text-white shadow-md shadow-blue-500/25 cursor-pointer'
-                  }`}
+                disabled={!isFormSubmitAllowed}
+                className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm sm:text-base transition-all flex justify-center items-center mt-2 touch-manipulation min-h-[46px] ${
+                  !isFormSubmitAllowed
+                    ? 'bg-[#dadbe6] dark:bg-[#202538] border border-[#c1c2d6] dark:border-[#313a57] text-[#6a6c85] dark:text-[#717b99] cursor-not-allowed shadow-none'
+                    : 'bg-[#0066ff] hover:bg-[#0052cc] active:scale-[0.98] text-white shadow-md shadow-blue-500/25 cursor-pointer'
+                }`}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="animate-spin w-5 h-5 mr-2 flex-shrink-0" />
                     <span className="truncate">Memproses Absensi...</span>
                   </>
+                ) : !isGateOpen ? (
+                  <span>Absensi Ditutup</span>
                 ) : !selectedSessionStatus.isOpen ? (
                   <span>Sesi Ditutup</span>
                 ) : (

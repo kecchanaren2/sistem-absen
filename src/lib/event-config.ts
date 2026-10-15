@@ -24,6 +24,8 @@ export interface EventFormConfig {
   event_description?: string;
   footer_text: string;
   roles: DynamicRole[];
+  is_attendance_open?: boolean;
+  closed_message?: string;
 }
 
 export const DEFAULT_FORM_FIELDS: FormFieldItem[] = [
@@ -69,6 +71,8 @@ export const DEFAULT_EVENT_CONFIG: EventFormConfig = {
   event_name: 'Workshop Penyusunan Standar Pelayanan',
   event_description: 'Silakan isi data kehadiran Anda di bawah ini.',
   footer_text: 'Ac 2026 Workshop Penyusunan Standar Pelayanan. All rights reserved.',
+  is_attendance_open: true,
+  closed_message: 'Absensi telah ditutup oleh Administrator.',
   roles: [
     {
       id: 'peserta_dosen',
@@ -108,6 +112,8 @@ export function getLocalEventConfig(): EventFormConfig {
       return {
         ...DEFAULT_EVENT_CONFIG,
         ...parsed,
+        is_attendance_open: parsed.is_attendance_open !== undefined ? Boolean(parsed.is_attendance_open) : true,
+        closed_message: parsed.closed_message || DEFAULT_EVENT_CONFIG.closed_message,
         roles: Array.isArray(parsed.roles) && parsed.roles.length > 0 ? parsed.roles : DEFAULT_EVENT_CONFIG.roles,
       };
     }
@@ -144,6 +150,8 @@ export async function fetchEventConfig(): Promise<EventFormConfig> {
         event_name: data.event_name || DEFAULT_EVENT_CONFIG.event_name,
         event_description: data.event_description || DEFAULT_EVENT_CONFIG.event_description,
         footer_text: data.footer_text || DEFAULT_EVENT_CONFIG.footer_text,
+        is_attendance_open: data.is_attendance_open !== undefined ? Boolean(data.is_attendance_open) : (local.is_attendance_open !== undefined ? local.is_attendance_open : true),
+        closed_message: data.closed_message || local.closed_message || DEFAULT_EVENT_CONFIG.closed_message,
         roles: Array.isArray(data.roles) && data.roles.length > 0 ? data.roles : DEFAULT_EVENT_CONFIG.roles,
       };
       saveLocalEventConfig(remoteConfig);
@@ -161,15 +169,27 @@ export async function saveEventConfig(config: EventFormConfig): Promise<{ succes
 
   // 2. Coba simpan ke Supabase jika tabel tersedia
   try {
-    const { error } = await supabase.from('event_settings').upsert({
+    const payload: Record<string, any> = {
       id: 'default',
       portal_title: config.portal_title,
       event_name: config.event_name,
       event_description: config.event_description,
       footer_text: config.footer_text,
       roles: config.roles,
+      is_attendance_open: config.is_attendance_open !== undefined ? config.is_attendance_open : true,
+      closed_message: config.closed_message || DEFAULT_EVENT_CONFIG.closed_message,
       updated_at: new Date().toISOString(),
-    });
+    };
+
+    let { error } = await supabase.from('event_settings').upsert(payload);
+
+    // Fallback: Jika tabel di Supabase belum memiliki kolom is_attendance_open atau closed_message
+    if (error && (error.message?.includes('column') || error.code === '42703')) {
+      delete payload.is_attendance_open;
+      delete payload.closed_message;
+      const retry = await supabase.from('event_settings').upsert(payload);
+      error = retry.error;
+    }
 
     if (error) {
       console.warn('Note on Supabase event_settings:', error.message);
@@ -181,4 +201,18 @@ export async function saveEventConfig(config: EventFormConfig): Promise<{ succes
     console.warn('Supabase save error:', err);
     return { success: true, message: 'Pengaturan berhasil disimpan di browser lokal.' };
   }
+}
+
+export async function toggleAttendanceStatus(
+  isOpen: boolean,
+  closedMessage?: string
+): Promise<{ success: boolean; config: EventFormConfig; message: string }> {
+  const current = getLocalEventConfig();
+  const updated: EventFormConfig = {
+    ...current,
+    is_attendance_open: isOpen,
+    ...(closedMessage ? { closed_message: closedMessage } : {}),
+  };
+  const res = await saveEventConfig(updated);
+  return { success: res.success, config: updated, message: res.message };
 }
