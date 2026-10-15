@@ -1,4 +1,5 @@
 import AttendanceForm from './components/AttendanceForm';
+import Footer from './components/Footer';
 
 export default function Home() {
   return (
@@ -15,9 +16,7 @@ export default function Home() {
         <AttendanceForm />
       </main>
 
-      <footer className="relative z-10 py-5 text-center text-xs font-medium text-[#75778f] dark:text-[#7f88a3] tracking-wide">
-        Ac 2026 Workshop Penyusunan Standar Pelayanan. All rights reserved.
-      </footer>
+      <Footer />
     </div>
   );
 }

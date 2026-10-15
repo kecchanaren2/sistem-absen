@@ -71,32 +71,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nama hanya boleh berisi huruf, spasi, tanda hubung, atau apostrof.' }, { status: 400 });
     }
 
-    const allowedRoles = [
-      // Acara ini hanya untuk peserta (role panitia dinonaktifkan)
-      'peserta_tendik',
-      'peserta_dosen',
-    ];
-
-    if (!allowedRoles.includes(role)) {
+    // Validasi Role Dinamis: Role tidak boleh kosong atau 'admin'
+    if (!role || typeof role !== 'string' || role === 'admin') {
       return NextResponse.json({ error: 'Role tidak valid.' }, { status: 400 });
     }
 
-    // Validate email format
-    if (!isValidEmail(email)) {
+    // Validate email format jika ada
+    if (email && !isValidEmail(email)) {
       return NextResponse.json({ error: 'Format email tidak valid.' }, { status: 400 });
     }
 
-    // Validate NIM / NIP format
-    const cleanNimNip = String(nim_nip).trim();
-    const isDosenRole = role === 'panitia_dosen' || role === 'peserta_dosen' || role === 'peserta_tendik';
-    if (isDosenRole) {
-      if (!/^\d{1,24}$/.test(cleanNimNip)) {
-        return NextResponse.json({ error: 'NIP harus berupa angka maksimal 24 digit.' }, { status: 400 });
-      }
-    } else {
-      // Mahasiswa / Panitia Mahasiswa / Peserta Mahasiswa
-      if (!/^\d{1,14}$/.test(cleanNimNip)) {
-        return NextResponse.json({ error: 'NIM tidak valid (maksimal 14 digit angka).' }, { status: 400 });
+    // Validate NIM / NIP format jika diisi
+    const cleanNimNip = nim_nip ? String(nim_nip).trim() : '';
+    if (cleanNimNip) {
+      if (!/^\d{1,30}$/.test(cleanNimNip)) {
+        return NextResponse.json({ error: 'NIM / NIP harus berupa angka (maksimal 30 digit).' }, { status: 400 });
       }
     }
 
@@ -159,15 +148,27 @@ export async function POST(req: Request) {
     // 3. Anti-Cheat Validations are handled by Supabase UNIQUE INDEX constraint.
 
     // 5. Insert ke Database
-    const { error: insertError } = await supabaseAdmin
+    const insertPayload: Record<string, any> = {
+      name: verifiedPanitiaName || body.nama_peserta || email.split('@')[0],
+      email: email,
+      peran: role,
+      "NIM/NIP": cleanNimNip || null,
+      waktu_date: new Date().toISOString(),
+    };
+    if (body.instansi) insertPayload.instansi = String(body.instansi).trim();
+    if (body.whatsapp) insertPayload.whatsapp = String(body.whatsapp).trim();
+
+    let { error: insertError } = await supabaseAdmin
       .from('attendance')
-      .insert({
-        name: verifiedPanitiaName,
-        email: email,
-        peran: role,
-        "NIM/NIP": cleanNimNip,
-        waktu_date: new Date().toISOString(),
-      });
+      .insert(insertPayload);
+
+    // Fallback: Jika tabel attendance di Supabase belum memiliki kolom instansi/whatsapp
+    if (insertError && (insertError.message?.includes('column') || insertError.code === '42703')) {
+      delete insertPayload.instansi;
+      delete insertPayload.whatsapp;
+      const retryResult = await supabaseAdmin.from('attendance').insert(insertPayload);
+      insertError = retryResult.error;
+    }
 
 
     if (insertError) {

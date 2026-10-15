@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ChevronDown,
   Loader2,
@@ -14,10 +15,21 @@ import {
   Moon,
   X,
   ShieldCheck,
-  Search
+  Search,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { getSessionStatus, SESSION_SCHEDULES, SessionStatus } from '@/lib/schedule';
 import QRCodeWidget from './QRCodeWidget';
+import { supabase } from '@/lib/supabase';
+import {
+  getLocalEventConfig,
+  fetchEventConfig,
+  EventFormConfig,
+  DEFAULT_EVENT_CONFIG,
+  DEFAULT_FORM_FIELDS,
+  FormFieldItem,
+} from '@/lib/event-config';
 
 export interface AttendanceRecord {
   nama: string;
@@ -33,10 +45,12 @@ export const ROLES_LIST = [
   { value: 'peserta_mahasiswa', label: 'Peserta Mahasiswa', group: 'Peserta' },
   { value: 'peserta_tendik', label: 'Peserta Tendik', group: 'Peserta' },
   { value: 'peserta_dosen', label: 'Peserta Dosen', group: 'Peserta' },
+  { value: 'admin', label: 'Admin', group: 'Admin' },
 ] as const;
 
 export function getRoleLabel(roleValue?: string): string {
   if (!roleValue) return 'Peserta Mahasiswa';
+  if (roleValue === 'admin') return 'Admin';
   const found = ROLES_LIST.find((r) => r.value === roleValue);
   if (found) return found.label;
   if (
@@ -116,9 +130,16 @@ function getLocalAttendanceRecord(
 }
 
 export default function AttendanceForm() {
+  const router = useRouter();
+  const [eventConfig, setEventConfig] = useState<EventFormConfig>(() => getLocalEventConfig());
   const [email, setEmail] = useState('');
   const [namaPeserta, setNamaPeserta] = useState('');
-  const [role, setRole] = useState<'panitia_mahasiswa' | 'panitia_dosen' | 'peserta_mahasiswa' | 'peserta_tendik' | 'peserta_dosen'>('peserta_dosen');
+  const [role, setRole] = useState<string>('peserta_dosen');
+  const [instansi, setInstansi] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [isAdminLoggingIn, setIsAdminLoggingIn] = useState(false);
   const [nimNip, setNimNip] = useState('');
   const [hariAbsen, setHariAbsen] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -184,7 +205,7 @@ export default function AttendanceForm() {
 
   const isPanitiaRole = role === 'panitia_mahasiswa' || role === 'panitia_dosen';
 
-  // Initialize theme
+  // Initialize theme & load dynamic event config
   useEffect(() => {
     // Synchronize client-side theme mounted state
     const timer = setTimeout(() => {
@@ -192,7 +213,23 @@ export default function AttendanceForm() {
       const isDarkCurrent = document.documentElement.classList.contains('dark');
       setIsDark(isDarkCurrent);
     }, 0);
-    return () => clearTimeout(timer);
+
+    async function loadEventConfig() {
+      const cfg = await fetchEventConfig();
+      setEventConfig(cfg);
+    }
+    loadEventConfig();
+
+    const onUpdate = () => {
+      const cfg = getLocalEventConfig();
+      setEventConfig(cfg);
+    };
+    window.addEventListener('event_config_updated', onUpdate);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('event_config_updated', onUpdate);
+    };
   }, []);
 
   const toggleTheme = () => {
@@ -391,31 +428,77 @@ export default function AttendanceForm() {
 
   const selectedSessionStatus = hariAbsen === 1 ? status1 : status2;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation for NIM / NIP format
-    const cleanNimNip = nimNip.trim();
-    const isDosenRole = role === 'panitia_dosen' || role === 'peserta_dosen' || role === 'peserta_tendik';
+    // Khusus Role Admin: Autentikasi langsung ke Supabase Auth & redirect ke /admin
+    if (role === 'admin') {
+      if (!email.trim() || !adminPassword) {
+        setMessage({ text: 'Email dan password admin wajib diisi.', type: 'error' });
+        return;
+      }
+      setIsAdminLoggingIn(true);
+      setMessage(null);
+      try {
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: adminPassword,
+        });
 
-    if (!cleanNimNip) {
-      setMessage({
-        text: isDosenRole ? 'NIP tidak boleh kosong.' : 'NIM tidak boleh kosong.',
-        type: 'error',
-      });
+        if (authError || !data.user) {
+          setMessage({
+            text: authError?.message || 'Email atau password admin salah. Silakan coba lagi.',
+            type: 'error',
+          });
+          setIsAdminLoggingIn(false);
+          return;
+        }
+
+        setMessage({ text: 'Login berhasil! Mengalihkan ke dashboard admin...', type: 'success' });
+        router.push('/admin');
+      } catch (err) {
+        setMessage({
+          text: err instanceof Error ? err.message : 'Terjadi kesalahan saat masuk sebagai admin.',
+          type: 'error',
+        });
+        setIsAdminLoggingIn(false);
+      }
       return;
     }
 
-    if (isDosenRole) {
-      if (!/^\d{1,24}$/.test(cleanNimNip)) {
-        setMessage({ text: 'NIP harus berupa angka maksimal 24 digit.', type: 'error' });
-        return;
-      }
-    } else {
-      if (!/^\d{1,14}$/.test(cleanNimNip)) {
-        setMessage({ text: 'NIM harus berupa angka maksimal 14 digit.', type: 'error' });
-        return;
-      }
+    // Validasi Field Dinamis sesuai Pengaturan Peran
+    const currentRoleConfig = eventConfig.roles?.find((r) => r.id === role);
+    const namaField = currentRoleConfig?.fields.find((f) => f.id === 'nama');
+    const emailField = currentRoleConfig?.fields.find((f) => f.id === 'email');
+    const nimField = currentRoleConfig?.fields.find((f) => f.id === 'nim_nip');
+    const instansiField = currentRoleConfig?.fields.find((f) => f.id === 'instansi');
+    const whatsappField = currentRoleConfig?.fields.find((f) => f.id === 'whatsapp');
+
+    const cleanNimNip = nimNip.trim();
+
+    if (namaField?.enabled && namaField.required && !namaPeserta.trim()) {
+      setMessage({ text: `${namaField.label || 'Nama Lengkap'} tidak boleh kosong.`, type: 'error' });
+      return;
+    }
+
+    if (emailField?.enabled && emailField.required && !email.trim()) {
+      setMessage({ text: `${emailField.label || 'Email'} tidak boleh kosong.`, type: 'error' });
+      return;
+    }
+
+    if (nimField?.enabled && nimField.required && !cleanNimNip) {
+      setMessage({ text: `${nimField.label || 'NIM / NIP'} tidak boleh kosong.`, type: 'error' });
+      return;
+    }
+
+    if (instansiField?.enabled && instansiField.required && !instansi.trim()) {
+      setMessage({ text: `${instansiField.label || 'Asal Instansi'} tidak boleh kosong.`, type: 'error' });
+      return;
+    }
+
+    if (whatsappField?.enabled && whatsappField.required && !whatsapp.trim()) {
+      setMessage({ text: `${whatsappField.label || 'Nomor WhatsApp'} tidak boleh kosong.`, type: 'error' });
+      return;
     }
 
     if (!selectedSessionStatus.isOpen) {
@@ -437,17 +520,19 @@ export default function AttendanceForm() {
     const cleanNimNip = nimNip.trim();
 
     try {
-      // 2. Submit to API
+      // 2. Submit to API dengan payload dinamis
       const response = await fetch('/api/attendance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email,
-          nama_peserta: namaPeserta,
+          email: email.trim(),
+          nama_peserta: namaPeserta.trim(),
           role,
           nim_nip: cleanNimNip,
+          instansi: instansi.trim(),
+          whatsapp: whatsapp.trim(),
         }),
       });
 
@@ -588,18 +673,20 @@ export default function AttendanceForm() {
     }
   };
 
-  // handleDownloadCertificate SENGAJA DIHAPUS dari halaman ini.
-  // Alasan: fungsi ini menggunakan `role` dari dropdown form, bukan dari database,
-  // sehingga user bisa memanipulasi role untuk mendapatkan template sertifikat yang salah.
-  // Seluruh proses download sertifikat dipindahkan ke Portal Sertifikat (/sertifikat)
-  // yang memverifikasi role langsung dari database (server-side).
+  // Daftar Peran Dinamis dari Konfigurasi Acara + Admin
+  const dynamicRolesList = [
+    ...(eventConfig.roles || []).map((r) => ({
+      value: r.id,
+      label: r.label,
+      group: r.category || 'Peserta',
+    })),
+    { value: 'admin', label: 'Admin', group: 'Admin' },
+  ];
 
-  const ROLES = [
-    { value: 'peserta_tendik', label: 'Peserta Tendik', group: 'Peserta' },
-    { value: 'peserta_dosen', label: 'Peserta Dosen', group: 'Peserta' },
-  ] as const;
-
-  const selectedRole = ROLES.find((r) => r.value === role) || ROLES[0];
+  const selectedRole =
+    dynamicRolesList.find((r) => r.value === role) ||
+    dynamicRolesList[0] || { value: 'peserta_dosen', label: 'Peserta Dosen', group: 'Peserta' };
+  const currentRoleConfig = eventConfig.roles?.find((r) => r.id === role);
   const isDosenRole = role === 'panitia_dosen' || role === 'peserta_dosen' || role === 'peserta_tendik';
 
   return (
@@ -687,10 +774,15 @@ export default function AttendanceForm() {
           </div>
         )}
 
-        {/* Main Title */}
-        <h2 className="relative z-10 text-3xl sm:text-4xl md:text-[40px] font-extrabold tracking-[-1px] text-white drop-shadow-xs mb-2 leading-none">
-          PORTAL ABSENSI
+        {/* Main Title Dinamis */}
+        <h2 className="relative z-10 text-3xl sm:text-4xl md:text-[40px] font-extrabold tracking-[-1px] text-white drop-shadow-xs mb-1.5 leading-none">
+          {eventConfig.portal_title || 'PORTAL ABSENSI'}
         </h2>
+        {eventConfig.event_name && (
+          <p className="relative z-10 text-xs sm:text-sm font-semibold text-white/95 max-w-lg mx-auto drop-shadow-xs mb-1">
+            {eventConfig.event_name}
+          </p>
+        )}
 
         {/* Live Clock Server Time Badge */}
         {currentTime && (
@@ -808,7 +900,11 @@ export default function AttendanceForm() {
                   }`}
               >
                 <span className="flex items-center space-x-2.5">
-                  <UserCheck className="w-4 h-4 flex-shrink-0 text-[#0066ff] dark:text-[#60a5fa]" />
+                  {role === 'admin' ? (
+                    <ShieldCheck className="w-4 h-4 flex-shrink-0 text-indigo-600 dark:text-indigo-400" />
+                  ) : (
+                    <UserCheck className="w-4 h-4 flex-shrink-0 text-[#0066ff] dark:text-[#60a5fa]" />
+                  )}
                   <span>{selectedRole.label}</span>
                 </span>
                 <ChevronDown
@@ -820,13 +916,13 @@ export default function AttendanceForm() {
               {/* Dropdown panel */}
               {roleOpen && (
                 <div className="absolute z-50 left-0 right-0 mt-1.5 rounded-2xl border border-[#c0c2de] dark:border-[#323b63] bg-[#f8f8fc] dark:bg-[#191f37] shadow-xl overflow-hidden animate-in fade-in duration-100">
-                  {/* Peserta group */}
+                  {/* Peserta & Peran Dinamis */}
                   <div className="px-3 pt-2.5 pb-1">
                     <span className="text-[10px] font-black uppercase tracking-widest text-[#5d5f7e] dark:text-[#9aa0c2]">
-                      Peserta
+                      Peran Peserta
                     </span>
                   </div>
-                  {ROLES.filter((r) => r.group === 'Peserta').map((r) => (
+                  {dynamicRolesList.filter((r) => r.group !== 'Admin').map((r) => (
                     <button
                       key={r.value}
                       type="button"
@@ -847,105 +943,254 @@ export default function AttendanceForm() {
                       <span>{r.label}</span>
                     </button>
                   ))}
+
+                  {/* Admin group */}
+                  <div className="border-t border-[#c0c2de]/50 dark:border-[#323b63]/60 my-1" />
+                  <div className="px-3 pt-2 pb-1 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                      Administrator
+                    </span>
+                  </div>
+                  {dynamicRolesList.filter((r) => r.group === 'Admin').map((r) => (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => {
+                        setRole(r.value);
+                        setMessage(null);
+                        setRoleOpen(false);
+                      }}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation cursor-pointer active:scale-[0.99] ${role === r.value
+                        ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 font-bold'
+                        : 'text-[#18192c] dark:text-[#eef0fb] hover:bg-[#e2e3ef] dark:hover:bg-[#252c4c]'
+                        }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${role === r.value ? 'bg-indigo-600' : 'bg-[#c0c2de] dark:bg-[#323b63]'
+                          }`}
+                      />
+                      <span className="font-bold">{r.label}</span>
+                    </button>
+                  ))}
                   <div className="h-1.5" />
                 </div>
               )}
             </div>
           </div>
 
-          {/* Nama Lengkap Input untuk peserta */}
-          {!isPanitiaRole && <div className="flex flex-col space-y-1.5">
-            <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
-              NAMA LENGKAP
-            </label>
-            <input
-              type="text"
-              required
-              disabled={isPanitiaRole}
-              value={namaPeserta}
-              onChange={(e) => {
-                setNamaPeserta(e.target.value.replace(/[^\p{L}\p{M} '\u2019-]/gu, ''));
-              }}
-              className={`w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation ${isPanitiaRole ? 'cursor-not-allowed opacity-80' : ''}`}
-              placeholder={isPanitiaRole ? 'Nama akan muncul setelah NIM/NIP valid' : 'Masukkan nama sesuai identitas'}
-              autoComplete="name"
-            />
-          </div>}
+          {/* Form Fields: Jika Role Admin vs Regular Peserta */}
+          {role === 'admin' ? (
+            <>
+              {/* Email Admin Input */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                  EMAIL ADMIN
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation"
+                  placeholder="admin@example.com"
+                  autoComplete="email"
+                />
+              </div>
 
-          {/* Email Input */}
-          <div className="flex flex-col space-y-1">
-            <div className="flex flex-col">
-              <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
-                EMAIL
-              </label>
-              <span className="text-[11px] text-[#6d709a] dark:text-[#8a92b5] font-medium mt-0.5">
-                *Email akan digunakan untuk mengirim sertifikat
+              {/* Password Admin Input */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                  PASSWORD
+                </label>
+                <div className="relative">
+                  <input
+                    type={showAdminPassword ? 'text' : 'password'}
+                    required
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="w-full pl-3.5 pr-11 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation"
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword((v) => !v)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#5d5f7e] dark:text-[#9aa0c2] hover:text-[#18192c] dark:hover:text-[#eef0fb] transition-colors cursor-pointer"
+                  >
+                    {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit Button Admin */}
+              <button
+                type="submit"
+                disabled={!isMounted || isAdminLoggingIn}
+                className="w-full py-3.5 px-4 rounded-xl font-bold text-sm sm:text-base transition-all flex justify-center items-center mt-2 touch-manipulation min-h-[46px] bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white shadow-md shadow-indigo-500/25 cursor-pointer disabled:opacity-60"
+              >
+                {isAdminLoggingIn ? (
+                  <>
+                    <Loader2 className="animate-spin w-5 h-5 mr-2 flex-shrink-0" />
+                    <span className="truncate">Memverifikasi Admin...</span>
+                  </>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Masuk ke Admin Dashboard</span>
+                  </span>
+                )}
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Form Dinamis: Merender hanya field yang diaktifkan untuk peran ini */}
+              {(() => {
+                const fields: FormFieldItem[] = currentRoleConfig?.fields || DEFAULT_FORM_FIELDS;
+                const namaField = fields.find((f: FormFieldItem) => f.id === 'nama');
+                const emailField = fields.find((f: FormFieldItem) => f.id === 'email');
+                const nimField = fields.find((f: FormFieldItem) => f.id === 'nim_nip');
+                const instansiField = fields.find((f: FormFieldItem) => f.id === 'instansi');
+                const whatsappField = fields.find((f: FormFieldItem) => f.id === 'whatsapp');
+
+                return (
+                  <>
+                    {/* Nama Lengkap Input */}
+                    {namaField?.enabled && (
+                      <div className="flex flex-col space-y-1.5">
+                        <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                          {namaField.label || 'NAMA LENGKAP'} {namaField.required && <span className="text-red-500">*</span>}
+                        </label>
+                        <input
+                          type="text"
+                          required={namaField.required}
+                          value={namaPeserta}
+                          onChange={(e) => {
+                            setNamaPeserta(e.target.value.replace(/[^\p{L}\p{M} '\u2019-]/gu, ''));
+                          }}
+                          className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation"
+                          placeholder={namaField.placeholder || 'Masukkan nama sesuai identitas'}
+                          autoComplete="name"
+                        />
+                      </div>
+                    )}
+
+                    {/* Email Input */}
+                    {emailField?.enabled && (
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex flex-col">
+                          <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                            {emailField.label || 'EMAIL'} {emailField.required && <span className="text-red-500">*</span>}
+                          </label>
+                          <span className="text-[11px] text-[#6d709a] dark:text-[#8a92b5] font-medium mt-0.5">
+                            *Email akan digunakan untuk mengirim sertifikat
+                          </span>
+                        </div>
+                        <input
+                          type="email"
+                          required={emailField.required}
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation mt-0.5"
+                          placeholder={emailField.placeholder || 'email@contoh.com'}
+                          autoComplete="email"
+                        />
+                      </div>
+                    )}
+
+                    {/* NIM / NIP Input */}
+                    {nimField?.enabled && (
+                      <div className="flex flex-col space-y-1.5">
+                        <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                          {nimField.label || 'NIM / NIP'} {nimField.required && <span className="text-red-500">*</span>}
+                        </label>
+                        <input
+                          type="text"
+                          required={nimField.required}
+                          value={nimNip}
+                          onChange={(e) => {
+                            setNimNip(e.target.value.replace(/\D/g, ''));
+                          }}
+                          onBlur={handleNimBlur}
+                          className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation font-mono tracking-wider"
+                          placeholder={nimField.placeholder || 'Misal: 1981100720081210001'}
+                          autoComplete="off"
+                        />
+                      </div>
+                    )}
+
+                    {/* Asal Instansi / Unit Kerja Input */}
+                    {instansiField?.enabled && (
+                      <div className="flex flex-col space-y-1.5">
+                        <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                          {instansiField.label || 'ASAL INSTANSI / UNIT KERJA'} {instansiField.required && <span className="text-red-500">*</span>}
+                        </label>
+                        <input
+                          type="text"
+                          required={instansiField.required}
+                          value={instansi}
+                          onChange={(e) => setInstansi(e.target.value)}
+                          className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation"
+                          placeholder={instansiField.placeholder || 'Contoh: Fakultas Kedokteran / Universitas Udayana'}
+                        />
+                      </div>
+                    )}
+
+                    {/* Nomor WhatsApp Input */}
+                    {whatsappField?.enabled && (
+                      <div className="flex flex-col space-y-1.5">
+                        <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
+                          {whatsappField.label || 'NOMOR WHATSAPP / HP'} {whatsappField.required && <span className="text-red-500">*</span>}
+                        </label>
+                        <input
+                          type="tel"
+                          required={whatsappField.required}
+                          value={whatsapp}
+                          onChange={(e) => setWhatsapp(e.target.value)}
+                          className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation font-mono"
+                          placeholder={whatsappField.placeholder || '081234567890'}
+                        />
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Sesi Closed Banner */}
+              {!selectedSessionStatus.isOpen && (
+                <div className="p-3 bg-[rgba(0,17,254,0.08)] dark:bg-blue-950/40 border border-[rgba(0,17,254,0.25)] dark:border-blue-800/40 rounded-xl text-[#060e7b] dark:text-blue-200 text-xs flex items-center space-x-2">
+                  <Lock className="w-4 h-4 flex-shrink-0 text-[#0467ff] dark:text-blue-400" />
+                  <span>
+                    Absensi saat ini ditutup. ({selectedSessionStatus.message})
+                  </span>
+                </div>
+              )}
+
+              {/* Submit / Action Button */}
+              <button
+                type="submit"
+                disabled={!isMounted || isLoading || !selectedSessionStatus.isOpen}
+                className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm sm:text-base transition-all flex justify-center items-center mt-2 touch-manipulation min-h-[46px] ${!isMounted || !selectedSessionStatus.isOpen
+                  ? 'bg-[#dadbe6] dark:bg-[#202538] border border-[#c1c2d6] dark:border-[#313a57] text-[#6a6c85] dark:text-[#717b99] cursor-not-allowed shadow-none'
+                  : 'bg-[#0066ff] hover:bg-[#0052cc] active:scale-[0.98] text-white shadow-md shadow-blue-500/25 cursor-pointer'
+                  }`}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="animate-spin w-5 h-5 mr-2 flex-shrink-0" />
+                    <span className="truncate">Memproses Absensi...</span>
+                  </>
+                ) : !selectedSessionStatus.isOpen ? (
+                  <span>Sesi Ditutup</span>
+                ) : (
+                  <span>Absen Sekarang</span>
+                )}
+              </button>
+              <span className="text-[11px] text-[#6d709a] dark:text-[#8a92b5] font-medium text-center sm:text-left mt-0.5">
+                *setelah absensi, e-sertifikat dapat diunduh melalui portal sertifikat
               </span>
-            </div>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation mt-0.5"
-              placeholder="email@contoh.com"
-              autoComplete="email"
-            />
-          </div>
-
-          {/* NIM / NIP Input */}
-          <div className="flex flex-col space-y-1.5">
-            <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
-              {isDosenRole ? 'NIP' : 'NIM'}
-            </label>
-            <input
-              type="text"
-              required
-              maxLength={isDosenRole ? 24 : 14}
-              value={nimNip}
-              onChange={(e) => {
-                setNimNip(e.target.value.replace(/\D/g, ''));
-              }}
-              onBlur={handleNimBlur}
-              className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation font-mono tracking-wider"
-              placeholder={isDosenRole ? 'Misal: 1981100720081210001' : 'Misal: 1234567890'}
-              autoComplete="off"
-            />
-          </div>
-
-          {/* Sesi Closed Banner */}
-          {!selectedSessionStatus.isOpen && (
-            <div className="p-3 bg-[rgba(0,17,254,0.08)] dark:bg-blue-950/40 border border-[rgba(0,17,254,0.25)] dark:border-blue-800/40 rounded-xl text-[#060e7b] dark:text-blue-200 text-xs flex items-center space-x-2">
-              <Lock className="w-4 h-4 flex-shrink-0 text-[#0467ff] dark:text-blue-400" />
-              <span>
-                Absensi saat ini ditutup. ({selectedSessionStatus.message})
-              </span>
-            </div>
+            </>
           )}
-
-          {/* Submit / Action Button */}
-          <button
-            type="submit"
-            disabled={!isMounted || isLoading || !selectedSessionStatus.isOpen}
-            className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm sm:text-base transition-all flex justify-center items-center mt-2 touch-manipulation min-h-[46px] ${!isMounted || !selectedSessionStatus.isOpen
-              ? 'bg-[#dadbe6] dark:bg-[#202538] border border-[#c1c2d6] dark:border-[#313a57] text-[#6a6c85] dark:text-[#717b99] cursor-not-allowed shadow-none'
-              : 'bg-[#0066ff] hover:bg-[#0052cc] active:scale-[0.98] text-white shadow-md shadow-blue-500/25 cursor-pointer'
-              }`}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="animate-spin w-5 h-5 mr-2 flex-shrink-0" />
-                <span className="truncate">Memproses Absensi...</span>
-              </>
-            ) : !selectedSessionStatus.isOpen ? (
-              <span>Sesi Ditutup</span>
-            ) : (
-              <span>Absen Sekarang</span>
-            )}
-          </button>
-          <span className="text-[11px] text-[#6d709a] dark:text-[#8a92b5] font-medium text-center sm:text-left mt-0.5">
-            *setelah absensi, e-sertifikat dapat diunduh melalui portal sertifikat
-          </span>
 
           <a
             href="/sertifikat"
