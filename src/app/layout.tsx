@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,7 +26,8 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
+  themeColor: "#0467ff",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -43,28 +45,23 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth dark`}
     >
-      <head>
-        <meta name="theme-color" content="#0467ff" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <script
+      <body className="min-h-screen flex flex-col transition-colors duration-300">
+        <Script
+          id="theme-initializer"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
-              (function() {
-                try {
-                  const savedTheme = localStorage.getItem('theme');
-                  if (savedTheme === 'light') {
-                    document.documentElement.classList.remove('dark');
-                  } else {
-                    document.documentElement.classList.add('dark');
-                  }
-                } catch (e) {}
-              })();
+              try {
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme === 'light') {
+                  document.documentElement.classList.remove('dark');
+                } else {
+                  document.documentElement.classList.add('dark');
+                }
+              } catch (e) {}
             `,
           }}
         />
-      </head>
-      <body className="min-h-screen flex flex-col transition-colors duration-300">
         {children}
       </body>
     </html>

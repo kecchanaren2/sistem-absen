@@ -45,12 +45,10 @@ export const ROLES_LIST = [
   { value: 'peserta_mahasiswa', label: 'Peserta Mahasiswa', group: 'Peserta' },
   { value: 'peserta_tendik', label: 'Peserta Tendik', group: 'Peserta' },
   { value: 'peserta_dosen', label: 'Peserta Dosen', group: 'Peserta' },
-  { value: 'admin', label: 'Admin', group: 'Admin' },
 ] as const;
 
 export function getRoleLabel(roleValue?: string): string {
   if (!roleValue) return 'Peserta Mahasiswa';
-  if (roleValue === 'admin') return 'Admin';
   const found = ROLES_LIST.find((r) => r.value === roleValue);
   if (found) return found.label;
   if (
@@ -137,9 +135,6 @@ export default function AttendanceForm() {
   const [role, setRole] = useState<string>('peserta_dosen');
   const [instansi, setInstansi] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [showAdminPassword, setShowAdminPassword] = useState(false);
-  const [isAdminLoggingIn, setIsAdminLoggingIn] = useState(false);
   const [nimNip, setNimNip] = useState('');
   const [hariAbsen, setHariAbsen] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -435,41 +430,6 @@ export default function AttendanceForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Khusus Role Admin: Autentikasi langsung ke Supabase Auth & redirect ke /admin
-    if (role === 'admin') {
-      if (!email.trim() || !adminPassword) {
-        setMessage({ text: 'Email dan password admin wajib diisi.', type: 'error' });
-        return;
-      }
-      setIsAdminLoggingIn(true);
-      setMessage(null);
-      try {
-        const { data, error: authError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password: adminPassword,
-        });
-
-        if (authError || !data.user) {
-          setMessage({
-            text: authError?.message || 'Email atau password admin salah. Silakan coba lagi.',
-            type: 'error',
-          });
-          setIsAdminLoggingIn(false);
-          return;
-        }
-
-        setMessage({ text: 'Login berhasil! Mengalihkan ke dashboard admin...', type: 'success' });
-        router.push('/admin');
-      } catch (err) {
-        setMessage({
-          text: err instanceof Error ? err.message : 'Terjadi kesalahan saat masuk sebagai admin.',
-          type: 'error',
-        });
-        setIsAdminLoggingIn(false);
-      }
-      return;
-    }
-
     // Validasi Field Dinamis sesuai Pengaturan Peran
     const currentRoleConfig = eventConfig.roles?.find((r) => r.id === role);
     const namaField = currentRoleConfig?.fields.find((f) => f.id === 'nama');
@@ -693,8 +653,7 @@ export default function AttendanceForm() {
       label: r.label,
       group: r.category || 'Peserta',
     })),
-    { value: 'admin', label: 'Admin', group: 'Admin' },
-  ];
+    ];
 
   const selectedRole =
     dynamicRolesList.find((r) => r.value === role) ||
@@ -913,11 +872,7 @@ export default function AttendanceForm() {
                   }`}
               >
                 <span className="flex items-center space-x-2.5">
-                  {role === 'admin' ? (
-                    <ShieldCheck className="w-4 h-4 flex-shrink-0 text-indigo-600 dark:text-indigo-400" />
-                  ) : (
-                    <UserCheck className="w-4 h-4 flex-shrink-0 text-[#0066ff] dark:text-[#60a5fa]" />
-                  )}
+                  <UserCheck className="w-4 h-4 flex-shrink-0 text-[#0066ff] dark:text-[#60a5fa]" />
                   <span>{selectedRole.label}</span>
                 </span>
                 <ChevronDown
@@ -929,13 +884,13 @@ export default function AttendanceForm() {
               {/* Dropdown panel */}
               {roleOpen && (
                 <div className="absolute z-50 left-0 right-0 mt-1.5 rounded-2xl border border-[#c0c2de] dark:border-[#323b63] bg-[#f8f8fc] dark:bg-[#191f37] shadow-xl overflow-hidden animate-in fade-in duration-100">
-                  {/* Peserta & Peran Dinamis */}
+                  {/* Pilihan Peran */}
                   <div className="px-3 pt-2.5 pb-1">
                     <span className="text-[10px] font-black uppercase tracking-widest text-[#5d5f7e] dark:text-[#9aa0c2]">
-                      Peran Peserta
+                      Pilihan Peran
                     </span>
                   </div>
-                  {dynamicRolesList.filter((r) => r.group !== 'Admin').map((r) => (
+                  {dynamicRolesList.map((r) => (
                     <button
                       key={r.value}
                       type="button"
@@ -956,106 +911,12 @@ export default function AttendanceForm() {
                       <span>{r.label}</span>
                     </button>
                   ))}
-
-                  {/* Admin group */}
-                  <div className="border-t border-[#c0c2de]/50 dark:border-[#323b63]/60 my-1" />
-                  <div className="px-3 pt-2 pb-1 flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-                      Administrator
-                    </span>
-                  </div>
-                  {dynamicRolesList.filter((r) => r.group === 'Admin').map((r) => (
-                    <button
-                      key={r.value}
-                      type="button"
-                      onClick={() => {
-                        setRole(r.value);
-                        setMessage(null);
-                        setRoleOpen(false);
-                      }}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold transition-colors touch-manipulation cursor-pointer active:scale-[0.99] ${role === r.value
-                        ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 font-bold'
-                        : 'text-[#18192c] dark:text-[#eef0fb] hover:bg-[#e2e3ef] dark:hover:bg-[#252c4c]'
-                        }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${role === r.value ? 'bg-indigo-600' : 'bg-[#c0c2de] dark:bg-[#323b63]'
-                          }`}
-                      />
-                      <span className="font-bold">{r.label}</span>
-                    </button>
-                  ))}
                   <div className="h-1.5" />
                 </div>
               )}
             </div>
           </div>
 
-          {/* Form Fields: Jika Role Admin vs Regular Peserta */}
-          {role === 'admin' ? (
-            <>
-              {/* Email Admin Input */}
-              <div className="flex flex-col space-y-1">
-                <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
-                  EMAIL ADMIN
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation"
-                  placeholder="admin@example.com"
-                  autoComplete="email"
-                />
-              </div>
-
-              {/* Password Admin Input */}
-              <div className="flex flex-col space-y-1">
-                <label className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.45px] text-[#5d5f7e] dark:text-[#9aa0c2]">
-                  PASSWORD
-                </label>
-                <div className="relative">
-                  <input
-                    type={showAdminPassword ? 'text' : 'password'}
-                    required
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full pl-3.5 pr-11 py-3 text-sm sm:text-base rounded-xl border border-[#c0c2de] dark:border-[#323b63] focus:ring-2 focus:ring-[#0066ff]/30 focus:border-[#0066ff] bg-[#e2e3ef] dark:bg-[#1c223c] text-[#18192c] dark:text-[#eef0fb] placeholder-[#84869e] dark:placeholder-[#6d779f] transition-all shadow-xs touch-manipulation"
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowAdminPassword((v) => !v)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#5d5f7e] dark:text-[#9aa0c2] hover:text-[#18192c] dark:hover:text-[#eef0fb] transition-colors cursor-pointer"
-                  >
-                    {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Submit Button Admin */}
-              <button
-                type="submit"
-                disabled={!isMounted || isAdminLoggingIn}
-                className="w-full py-3.5 px-4 rounded-xl font-bold text-sm sm:text-base transition-all flex justify-center items-center mt-2 touch-manipulation min-h-[46px] bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white shadow-md shadow-indigo-500/25 cursor-pointer disabled:opacity-60"
-              >
-                {isAdminLoggingIn ? (
-                  <>
-                    <Loader2 className="animate-spin w-5 h-5 mr-2 flex-shrink-0" />
-                    <span className="truncate">Memverifikasi Admin...</span>
-                  </>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Masuk ke Admin Dashboard</span>
-                  </span>
-                )}
-              </button>
-            </>
-          ) : (
             <>
               {/* Form Dinamis: Merender hanya field yang diaktifkan untuk peran ini */}
               {(() => {
@@ -1219,7 +1080,6 @@ export default function AttendanceForm() {
                 *setelah absensi, e-sertifikat dapat diunduh melalui portal sertifikat
               </span>
             </>
-          )}
 
           <a
             href="/sertifikat"
