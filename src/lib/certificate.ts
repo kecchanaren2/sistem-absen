@@ -99,6 +99,7 @@ export async function renderCertificateToDataUrl(
 
         const fontFamily = options?.fontFamily || '"Times New Roman", Times, serif';
         const fontColor = options?.fontColor || '#000000';
+        const isDosenCertificate = imageUrl.includes('Dosen');
         const isPengabdianCertificate = imageUrl.includes('Pengabdian.png');
         const isRelawanPengabdian = imageUrl === '/Relawan_Pengabdian.png';
 
@@ -120,7 +121,9 @@ export async function renderCertificateToDataUrl(
         const xPosRatio = options?.xPosRatio !== undefined ? options.xPosRatio : 0.5;
         let yPosRatio = options?.yPosRatio !== undefined ? options.yPosRatio : 0.27;
         if (options?.yPosRatio === undefined) {
-          if (isRelawanPengabdian) {
+          if (isDosenCertificate) {
+            yPosRatio = 0.37; // <-- PENGATURAN POSISI NAMA KHUSUS DOSEN
+          } else if (isRelawanPengabdian) {
             yPosRatio = 0.30;
           } else if (isPengabdianCertificate) {
             yPosRatio = 0.30;
