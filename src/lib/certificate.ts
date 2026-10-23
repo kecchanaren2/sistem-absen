@@ -41,7 +41,24 @@ export function saveLocalCertificateConfig(config: CertificateDesignConfig) {
   }
 }
 
-export async function renderAndDownloadCanvas(
+export interface CertificatePreviewItem {
+  id: string;
+  title: string;
+  dataUrl: string;
+  fileName: string;
+  imageUrl: string;
+}
+
+export function downloadDataUrl(dataUrl: string, fileName: string) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+export async function renderCertificateToDataUrl(
   namaPeserta: string,
   imageUrl: string,
   options?: {
@@ -52,8 +69,8 @@ export async function renderAndDownloadCanvas(
     yPosRatio?: number;
     fileNameSuffix?: string;
   }
-) {
-  return new Promise<void>((resolve, reject) => {
+): Promise<{ dataUrl: string; fileName: string }> {
+  return new Promise<{ dataUrl: string; fileName: string }>((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
@@ -74,7 +91,7 @@ export async function renderAndDownloadCanvas(
         // 2. Format kapitalisasi nama
         const capitalizedName = namaPeserta.replace(/\b\w+/g, (word) => {
           const exceptions = ['dr', 'drg', 'drh', 'ns', 'sp', 'apt'];
-          if (exceptions.includes(word)) {
+          if (exceptions.includes(word.toLowerCase())) {
             return word;
           }
           return word.charAt(0).toUpperCase() + word.slice(1);
@@ -115,20 +132,12 @@ export async function renderAndDownloadCanvas(
 
         ctx.fillText(capitalizedName, xPos, yPos);
 
-        // 3. Download PNG
+        // 3. Konversi ke data URL PNG
         const dataUrl = canvas.toDataURL('image/png', 1.0);
-        const a = document.createElement('a');
-        a.href = dataUrl;
-
         const suffix = options?.fileNameSuffix ? ` - ${options.fileNameSuffix}` : '';
         const fileName = `Sertifikat - ${capitalizedName}${suffix}.png`;
 
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        resolve();
+        resolve({ dataUrl, fileName });
       } catch (err) {
         reject(err);
       }
@@ -138,16 +147,36 @@ export async function renderAndDownloadCanvas(
       reject(new Error(`Gagal memuat template sertifikat: ${imageUrl}`));
     };
 
-    img.src = imageUrl;
+    // Cache-buster: Tambahkan timestamp agar browser HP & CDN selalu mengambil gambar terbaru dari server
+    const separator = imageUrl.includes('?') ? '&' : '?';
+    img.src = `${imageUrl}${separator}t=${Date.now()}`;
   });
 }
 
-export async function generateAndDownloadCertificate(namaPeserta: string, role: string, customConfig?: CertificateDesignConfig) {
-  // Cek apakah ada custom config atau custom config lokal yang aktif
+export async function renderAndDownloadCanvas(
+  namaPeserta: string,
+  imageUrl: string,
+  options?: {
+    fontFamily?: string;
+    fontSize?: number;
+    fontColor?: string;
+    xPosRatio?: number;
+    yPosRatio?: number;
+    fileNameSuffix?: string;
+  }
+) {
+  const result = await renderCertificateToDataUrl(namaPeserta, imageUrl, options);
+  downloadDataUrl(result.dataUrl, result.fileName);
+}
+
+export async function generateCertificatePreviews(
+  namaPeserta: string,
+  role: string,
+  customConfig?: CertificateDesignConfig
+): Promise<CertificatePreviewItem[]> {
   const activeConfig = customConfig || getLocalCertificateConfig();
   if (activeConfig && activeConfig.is_custom_enabled && activeConfig.template_url) {
-    // Jalankan cetak dengan desain kustom yang diatur admin
-    await renderAndDownloadCanvas(namaPeserta, activeConfig.template_url, {
+    const res = await renderCertificateToDataUrl(namaPeserta, activeConfig.template_url, {
       fontFamily: activeConfig.font_family,
       fontSize: activeConfig.font_size,
       fontColor: activeConfig.font_color,
@@ -155,45 +184,55 @@ export async function generateAndDownloadCertificate(namaPeserta: string, role: 
       yPosRatio: activeConfig.y_position,
       fileNameSuffix: 'Custom',
     });
-    return;
+    return [
+      {
+        id: 'cert-custom',
+        title: 'Sertifikat (Kustom)',
+        dataUrl: res.dataUrl,
+        fileName: res.fileName,
+        imageUrl: activeConfig.template_url,
+      },
+    ];
   }
 
-  // Peta template sertifikat berdasarkan role bawaan:
-  let templates: string[];
+  // Tentukan template tunggal khusus untuk acara Workshop ini:
+  // Dosen / Tendik menggunakan Peserta_Acara_Dosen.png
+  // Mahasiswa / Umum menggunakan Peserta_Acara.png
+  let templateUrl = '/Peserta_Acara.png';
+  let certTitle = 'Sertifikat Workshop';
 
-  switch (role) {
-    case 'panitia_dosen':
-      templates = ['/Panitia_Acara_Dosen.png', '/Peserta_Acara_Dosen.png', '/Peserta_Pengabdian.png'];
-      break;
-    case 'panitia_mahasiswa':
-      templates = ['/Panitia_Acara.png', '/Peserta_Acara.png', '/Peserta_Pengabdian.png'];
-      break;
-    case 'peserta_dosen':
-    case 'peserta_tendik':
-      templates = ['/Peserta_Acara_Dosen.png'];
-      break;
-    case 'pengabdian_dosen':
-      templates = ['/Relawan_Pengabdian.png'];
-      break;
-    case 'pengabdian_mahasiswa':
-      templates = ['/Peserta_Pengabdian.png'];
-      break;
-    case 'peserta_mahasiswa':
-    default:
-      templates = ['/Peserta_Acara.png'];
-      break;
+  const normalizedRole = (role || '').toLowerCase();
+  if (
+    normalizedRole.includes('dosen') ||
+    normalizedRole.includes('tendik')
+  ) {
+    templateUrl = '/Peserta_Acara_Dosen.png';
+    certTitle = 'Sertifikat Workshop';
+  } else {
+    templateUrl = '/Peserta_Acara.png';
+    certTitle = 'Sertifikat Workshop';
   }
 
-  // Loop untuk mencetak semua sertifikat yang ada di dalam array
-  for (let i = 0; i < templates.length; i++) {
-    const imageUrl = templates[i];
-    await renderAndDownloadCanvas(namaPeserta, imageUrl, {
-      fileNameSuffix: templates.length > 1 ? `Lembar ${i + 1}` : undefined,
-    });
+  const res = await renderCertificateToDataUrl(namaPeserta, templateUrl);
+  return [
+    {
+      id: 'cert-main',
+      title: certTitle,
+      dataUrl: res.dataUrl,
+      fileName: res.fileName,
+      imageUrl: templateUrl,
+    },
+  ];
+}
 
-    if (i < templates.length - 1) {
-      await new Promise(r => setTimeout(r, 500));
-    }
+export async function generateAndDownloadCertificate(
+  namaPeserta: string,
+  role: string,
+  customConfig?: CertificateDesignConfig
+) {
+  const previews = await generateCertificatePreviews(namaPeserta, role, customConfig);
+  if (previews.length > 0) {
+    downloadDataUrl(previews[0].dataUrl, previews[0].fileName);
   }
 }
 

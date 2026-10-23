@@ -70,17 +70,40 @@ export async function POST(req: Request) {
 
     const cleanNimNip = String(nim_nip).trim();
 
-    // Query attendance records for this NIM/NIP
-    let { data: attendanceRecords, error } = await supabaseAdmin
+    // Query attendance records for this NIM/NIP (support both nim_nip and legacy "NIM/NIP" schemas)
+    let attendanceRecords: any[] | null = null;
+    let queryError: any = null;
+
+    // Coba 1: Schema attendance terkini (nim_nip)
+    const res1 = await supabaseAdmin
       .from('attendance')
-      .select('name, peran, email, waktu_date')
-      .eq('"NIM/NIP"', cleanNimNip);
+      .select('*')
+      .eq('nim_nip', cleanNimNip);
+
+    if (!res1.error && res1.data && res1.data.length > 0) {
+      attendanceRecords = res1.data;
+    } else {
+      if (res1.error && !res1.error.message?.includes('column attendance.nim_nip does not exist')) {
+        queryError = res1.error;
+      }
+      // Coba 2: Schema legacy ("NIM/NIP")
+      const res2 = await supabaseAdmin
+        .from('attendance')
+        .select('*')
+        .eq('"NIM/NIP"', cleanNimNip);
+
+      if (!res2.error && res2.data && res2.data.length > 0) {
+        attendanceRecords = res2.data;
+      } else if (res2.error && !res2.error.message?.includes('column attendance.NIM/NIP does not exist')) {
+        queryError = res2.error;
+      }
+    }
 
     // Jika tidak ditemukan di attendance, cari di rekap_gabungan
     if (!attendanceRecords || attendanceRecords.length === 0) {
       const { data: rekapRecords, error: rekapError } = await supabaseAdmin
         .from('rekap_gabungan')
-        .select('nama_peserta, role, nim_nip')
+        .select('*')
         .eq('nim_nip', cleanNimNip);
 
       if (!rekapError && rekapRecords && rekapRecords.length > 0) {
@@ -88,9 +111,9 @@ export async function POST(req: Request) {
       }
     }
 
-    if (error && (!attendanceRecords || attendanceRecords.length === 0)) {
-      console.error('Supabase error:', error);
-      return NextResponse.json({ error: `Terjadi kesalahan saat mengecek data absensi. Details: ${error?.message || JSON.stringify(error)}` }, { status: 500 });
+    if (queryError && (!attendanceRecords || attendanceRecords.length === 0)) {
+      console.error('Supabase query error:', queryError);
+      return NextResponse.json({ error: `Terjadi kesalahan saat mengecek data absensi. Details: ${queryError?.message || JSON.stringify(queryError)}` }, { status: 500 });
     }
 
     if (!attendanceRecords || attendanceRecords.length === 0) {

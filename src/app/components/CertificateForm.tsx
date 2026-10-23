@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Loader2,
   Download,
@@ -8,9 +8,14 @@ import {
   AlertCircle,
   ShieldCheck,
   Sun,
-  Moon
+  Moon,
+  Maximize2,
+  X,
+  Info,
+  Check,
 } from 'lucide-react';
 import Link from 'next/link';
+import type { CertificatePreviewItem } from '@/lib/certificate';
 
 export default function CertificateForm() {
   const [nimNip, setNimNip] = useState('');
@@ -18,11 +23,35 @@ export default function CertificateForm() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [eligibleForCertificate, setEligibleForCertificate] = useState(false);
   const [namaPeserta, setNamaPeserta] = useState('');
-
   const [rolePeserta, setRolePeserta] = useState('');
+
+  // Preview & Download States (Single certificate for current event)
+  const [preview, setPreview] = useState<CertificatePreviewItem | null>(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [downloadSuccessMessage, setDownloadSuccessMessage] = useState<string | null>(null);
 
   // Theme state (Dark / Light mode)
   const [isDark, setIsDark] = useState<boolean>(true);
+
+  // Close lightbox modal on Escape key & disable background scroll
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isPreviewModalOpen) {
+        setIsPreviewModalOpen(false);
+      }
+    };
+    if (isPreviewModalOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPreviewModalOpen]);
 
   const toggleTheme = () => {
     const nextDark = !isDark;
@@ -43,11 +72,13 @@ export default function CertificateForm() {
     setEligibleForCertificate(false);
     setNamaPeserta('');
     setRolePeserta('');
+    setPreview(null);
+    setDownloadSuccessMessage(null);
 
     const cleanNimNip = nimNip.trim();
 
     if (!cleanNimNip) {
-      setMessage({ text: 'NIP wajib diisi.', type: 'error' });
+      setMessage({ text: 'NIM/NIP wajib diisi.', type: 'error' });
       setIsLoading(false);
       return;
     }
@@ -77,6 +108,25 @@ export default function CertificateForm() {
       if (data.role) {
         setRolePeserta(data.role);
       }
+
+      // Jika eligible, langsung generate pratinjau sertifikat tunggal di browser
+      if (data.eligible && data.nama_peserta) {
+        setIsGeneratingPreview(true);
+        try {
+          const { generateCertificatePreviews } = await import('@/lib/certificate');
+          const certPreviews = await generateCertificatePreviews(
+            data.nama_peserta,
+            data.role || 'peserta_mahasiswa'
+          );
+          if (certPreviews && certPreviews.length > 0) {
+            setPreview(certPreviews[0]);
+          }
+        } catch (previewErr) {
+          console.error('Gagal membuat pratinjau sertifikat:', previewErr);
+        } finally {
+          setIsGeneratingPreview(false);
+        }
+      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat memverifikasi.';
       setMessage({ text: errorMessage, type: 'error' });
@@ -85,15 +135,29 @@ export default function CertificateForm() {
     }
   };
 
-  const handleDownloadCertificate = async () => {
-    if (namaPeserta) {
-      try {
-        const { generateAndDownloadCertificate } = await import('@/lib/certificate');
-        await generateAndDownloadCertificate(namaPeserta, rolePeserta);
-      } catch (error) {
-        console.error("Gagal membuat sertifikat:", error);
-        setMessage({ text: 'Gagal membuat sertifikat pada perangkat ini.', type: 'error' });
-      }
+  const handleDownload = () => {
+    if (!preview) return;
+
+    try {
+      import('@/lib/certificate').then(({ downloadDataUrl }) => {
+        downloadDataUrl(preview.dataUrl, preview.fileName);
+        setDownloadSuccessMessage('Sertifikat berhasil diunduh!');
+        setTimeout(() => setDownloadSuccessMessage(null), 4500);
+      });
+    } catch (err) {
+      console.error('Download error:', err);
+      setMessage({ text: 'Gagal mengunduh berkas sertifikat.', type: 'error' });
+    }
+  };
+
+  const handleDownloadDirectFallback = async () => {
+    if (!namaPeserta) return;
+    try {
+      const { generateAndDownloadCertificate } = await import('@/lib/certificate');
+      await generateAndDownloadCertificate(namaPeserta, rolePeserta);
+    } catch (error) {
+      console.error('Gagal membuat sertifikat:', error);
+      setMessage({ text: 'Gagal membuat sertifikat pada perangkat ini.', type: 'error' });
     }
   };
 
@@ -199,10 +263,11 @@ export default function CertificateForm() {
         {/* Dynamic Alerts */}
         {message && (
           <div
-            className={`p-4 rounded-2xl flex items-start space-x-3 text-sm transition-all duration-200 ${message.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-              : 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60 shadow-xs'
-              }`}
+            className={`p-4 rounded-2xl flex items-start space-x-3 text-sm transition-all duration-200 ${
+              message.type === 'success'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
+                : 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60 shadow-xs'
+            }`}
           >
             {message.type === 'success' ? (
               <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
@@ -213,26 +278,106 @@ export default function CertificateForm() {
           </div>
         )}
 
-        {/* Certificate Card */}
+        {/* Certificate Card with Visual Preview */}
         {eligibleForCertificate && (
-          <div className="p-5 bg-blue-500/10 dark:bg-blue-950/40 rounded-2xl border border-blue-500/30 dark:border-blue-800/40 text-center shadow-xs">
-            <div className="inline-flex p-2 bg-blue-100 dark:bg-blue-900/60 rounded-full mb-2 text-[#0066ff] dark:text-blue-300">
-              <ShieldCheck className="w-6 h-6" />
+          <div className="p-5 sm:p-6 bg-blue-500/10 dark:bg-blue-950/40 rounded-2xl sm:rounded-3xl border border-blue-500/30 dark:border-blue-800/40 shadow-sm flex flex-col space-y-4">
+            {/* Header info */}
+            <div className="flex flex-col items-center text-center space-y-1">
+              <div className="inline-flex p-2.5 bg-blue-100 dark:bg-blue-900/60 rounded-full text-[#0066ff] dark:text-blue-300 mb-1">
+                <ShieldCheck className="w-7 h-7" />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-[#18192c] dark:text-[#f1f3fd]">
+                Selamat, {namaPeserta}! 🎉
+              </h3>
+              <p className="text-[#5d5f7e] dark:text-[#9aa0c2] text-xs sm:text-sm leading-relaxed max-w-md">
+                Kehadiran Anda telah terverifikasi. Berikut adalah pratinjau sertifikat kegiatan Anda:
+              </p>
             </div>
-            <h3 className="text-lg font-bold text-[#18192c] dark:text-[#f1f3fd] mb-1">
-              Selamat! Anda Berhak E-Sertifikat 🎉
-            </h3>
-            <p className="text-[#5d5f7e] dark:text-[#9aa0c2] text-xs mb-4 leading-relaxed">
-              Kehadiran absensi Anda telah terverifikasi dengan valid.
-            </p>
-            <button
-              type="button"
-              onClick={handleDownloadCertificate}
-              className="w-full flex items-center justify-center space-x-2 bg-[#0066ff] hover:bg-[#0052cc] active:scale-[0.98] text-white py-3.5 px-4 rounded-xl font-bold transition-all shadow-md shadow-blue-500/25 touch-manipulation cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>Unduh Sertifikat</span>
-            </button>
+
+            {/* Loading preview state */}
+            {isGeneratingPreview && (
+              <div className="py-12 px-4 flex flex-col items-center justify-center space-y-3 bg-white/60 dark:bg-[#181d33]/60 rounded-2xl border border-blue-200 dark:border-blue-900/40">
+                <Loader2 className="w-8 h-8 text-[#0066ff] animate-spin" />
+                <p className="text-sm font-semibold text-[#18192c] dark:text-[#eef0fb]">
+                  Menyiapkan pratinjau sertifikat Anda...
+                </p>
+                <p className="text-xs text-[#5d5f7e] dark:text-[#9aa0c2]">
+                  Mencetak nama resmi ke desain template
+                </p>
+              </div>
+            )}
+
+            {/* Preview Available */}
+            {!isGeneratingPreview && preview && (
+              <div className="flex flex-col space-y-3">
+                {/* Certificate Preview Frame with Zoom overlay */}
+                <div className="relative group overflow-hidden rounded-2xl border-2 border-blue-400/30 dark:border-blue-500/30 bg-black/5 dark:bg-black/40 shadow-md">
+                  <img
+                    src={preview.dataUrl}
+                    alt={preview.title}
+                    className="w-full h-auto object-contain cursor-zoom-in transition-transform duration-200 group-hover:scale-[1.01]"
+                    onClick={() => setIsPreviewModalOpen(true)}
+                  />
+
+                  {/* Zoom badge button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewModalOpen(true)}
+                    aria-label="Perbesar Pratinjau Sertifikat"
+                    className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/75 hover:bg-black/90 text-white text-xs font-bold backdrop-blur-md shadow-lg transition-transform active:scale-95 cursor-pointer"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>Perbesar</span>
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-center text-[#5d5f7e] dark:text-[#9aa0c2]">
+                  Ketuk gambar di atas untuk melihat tampilan penuh (resolusi tinggi)
+                </p>
+
+                {/* Success feedback alert */}
+                {downloadSuccessMessage && (
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-xs font-semibold flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                    <span>{downloadSuccessMessage}</span>
+                  </div>
+                )}
+
+                {/* Download Action */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    className="w-full flex items-center justify-center space-x-2 bg-[#0066ff] hover:bg-[#0052cc] active:scale-[0.98] text-white py-3.5 px-4 rounded-xl font-bold text-sm sm:text-base transition-all shadow-md shadow-blue-500/25 touch-manipulation cursor-pointer"
+                  >
+                    <Download className="w-5 h-5" />
+                    <span>Unduh Sertifikat (PNG)</span>
+                  </button>
+                </div>
+
+                {/* Mobile User Tip Box */}
+                <div className="p-3.5 rounded-xl bg-amber-500/10 dark:bg-amber-950/30 border border-amber-500/20 dark:border-amber-700/30 text-amber-900 dark:text-amber-200 text-xs flex items-start space-x-2.5 leading-relaxed">
+                  <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Tips bagi pengguna smartphone:</span> Jika tombol unduh tidak otomatis menyimpan ke galeri, Anda dapat <strong>menekan dan menahan (tekan lama)</strong> gambar sertifikat di atas, lalu pilih <strong>&quot;Simpan Gambar&quot;</strong> atau <strong>&quot;Download Image&quot;</strong>.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Fallback if preview failed to generate */}
+            {!isGeneratingPreview && !preview && (
+              <div className="flex flex-col space-y-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadDirectFallback}
+                  className="w-full flex items-center justify-center space-x-2 bg-[#0066ff] hover:bg-[#0052cc] active:scale-[0.98] text-white py-3.5 px-4 rounded-xl font-bold transition-all shadow-md shadow-blue-500/25 touch-manipulation cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Unduh Sertifikat Langsung</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -284,6 +429,69 @@ export default function CertificateForm() {
           </Link>
         </form>
       </div>
+
+      {/* Fullscreen Lightbox Modal */}
+      {isPreviewModalOpen && preview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Pratinjau Sertifikat Layar Penuh"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col p-3 sm:p-6 transition-opacity animate-in fade-in duration-200"
+          onClick={() => setIsPreviewModalOpen(false)}
+        >
+          {/* Modal Header */}
+          <div
+            className="w-full max-w-5xl mx-auto flex items-center justify-between pb-3 text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-sm sm:text-base font-bold drop-shadow">
+              {preview.title}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsPreviewModalOpen(false)}
+              aria-label="Tutup Pratinjau"
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-transform active:scale-90 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Modal Content / Large Image */}
+          <div
+            className="flex-1 w-full max-w-5xl mx-auto flex items-center justify-center overflow-auto p-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={preview.dataUrl}
+              alt={preview.title}
+              className="max-h-[75vh] w-auto max-w-full object-contain rounded-xl shadow-2xl border border-white/10"
+            />
+          </div>
+
+          {/* Modal Footer Controls */}
+          <div
+            className="w-full max-w-5xl mx-auto pt-3 flex items-center justify-end gap-2.5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setIsPreviewModalOpen(false)}
+              className="px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all cursor-pointer"
+            >
+              Tutup
+            </button>
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0066ff] hover:bg-[#0052cc] text-white text-xs font-bold shadow-md transition-all active:scale-95 cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Unduh Sertifikat</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
